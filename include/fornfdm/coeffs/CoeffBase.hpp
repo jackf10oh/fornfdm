@@ -111,6 +111,7 @@ class CoeffBase: public Eigen::DiagonalBase<Derived>
     using Base::derived; 
     const auto& diagonal() const { return m_cyclic_wrapper; }
     const auto& callable() const { return derived().callable(); }
+    const fornfdm::Vector& getVector(){ return m_diagonal; }
 
     // Operators ------------
     template<class RhsDeriv, typename = std::enable_if_t<linops::internal::is_partialderiv_crtp<RhsDeriv>::value>>
