@@ -33,7 +33,7 @@ struct CyclicWrapper{
   CyclicWrapper(const fornfdm::Vector& v, std::size_t m)
     : m_wrapped(v), m_mod(m)
   {} 
-  const fornfdm::Scalar& operator()(std::size_t idx) const { return m_wrapped[idx%m_mod]; }
+  const fornfdm::Scalar& operator()(std::size_t idx) const { return m_wrapped[FORNFDM_MODULO(idx,m_mod)]; }
 };
 
 namespace internal{

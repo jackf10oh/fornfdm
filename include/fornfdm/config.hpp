@@ -16,4 +16,11 @@
 #define FORNFDM_CUSTOM_REAL Eigen::NumTraits<FORNFDM_CUSTOM_SCALAR>::Real 
 #endif
 
+// Modulo can be faster if all axes are powers of 2
+#ifdef FORNFDM_USE_BITWISE_MODULO
+#define FORNFDM_MODULO(x,y) ( (x) & (y - 1) )
+#else
+#define FORNFDM_MODULO(x,y) ( (x) % (y) )
+#endif 
+
 #endif // config.hpp

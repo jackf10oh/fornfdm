@@ -180,10 +180,10 @@ class PartialDerivBase<Derived, internal::LeftKroneckerTag> : public Eigen::Spar
         for(std::size_t row_idx=0; row_idx < product_before*axis_size; ++row_idx)
         {
           // use node selector 
-          typename Evaluator::Row row(eval, m.get(), (row_idx/product_before)%(m->sizeOfDim(traits_t::direction)), row_idx); // -1.0 is null time
+          typename Evaluator::Row row(eval, m.get(), FORNFDM_MODULO(row_idx/product_before, m->sizeOfDim(traits_t::direction)), row_idx); // -1.0 is null time
           // copy the indices into m_stencil's inner indices ptr
-          std::size_t inner_offset = (row.offset() * product_before)+(row.size()*(row_idx%product_before)); 
-          std::size_t inset = row_idx%product_before; 
+          std::size_t inner_offset = (row.offset() * product_before)+(row.size()*FORNFDM_MODULO(row_idx,product_before)); 
+          std::size_t inset = FORNFDM_MODULO(row_idx,product_before); 
           m_stencil.outerIndexPtr()[row_idx] = inner_offset; 
           for(auto i=0; i<row.size(); ++i){
             m_stencil.innerIndexPtr()[inner_offset + i] = inset + product_before * row.index(i);
@@ -210,9 +210,9 @@ class PartialDerivBase<Derived, internal::LeftKroneckerTag> : public Eigen::Spar
         // write node wise expressions into each row of stencil 
         for(std::size_t row_idx=0; row_idx < num_repeats*product_before*axis_size; ++row_idx)
         {
-          typename Evaluator::Row row(eval, m.get(), (row_idx/product_before)%(m->sizeOfDim(traits_t::direction)), row_idx); // -1.0 is null time. 
-          std::size_t inner_offset = (nnz)*(row_idx/(product_before*axis_size))+(row.offset() * product_before)+(row.size()*(row_idx%product_before)); 
-          std::size_t inset = (product_before*axis_size)*(row_idx/(product_before*axis_size)) + (row_idx%product_before); 
+          typename Evaluator::Row row(eval, m.get(), FORNFDM_MODULO(row_idx/product_before,m->sizeOfDim(traits_t::direction)), row_idx); // -1.0 is null time. 
+          std::size_t inner_offset = (nnz)*(row_idx/(product_before*axis_size))+(row.offset() * product_before)+(row.size()*FORNFDM_MODULO(row_idx,product_before)); 
+          std::size_t inset = (product_before*axis_size)*(row_idx/(product_before*axis_size)) + FORNFDM_MODULO(row_idx, product_before); 
           m_stencil.outerIndexPtr()[row_idx] = inner_offset; 
           for(auto i=0; i<row.size(); ++i){
             m_stencil.innerIndexPtr()[inner_offset + i] = inset + product_before * row.index(i);
@@ -338,10 +338,10 @@ class PartialDerivBase<Derived, internal::TimeDepLeftKroneckerTag> : public Eige
           for(std::size_t row_idx=0; row_idx < product_before*axis_size; ++row_idx)
           {
             // use node selector 
-            typename Evaluator::Row row(eval, m_mesh_raw, (row_idx/product_before)%(m_mesh_raw->sizeOfDim(traits_t::direction)), row_idx);
+            typename Evaluator::Row row(eval, m_mesh_raw, FORNFDM_MODULO(row_idx/product_before, m_mesh_raw->sizeOfDim(traits_t::direction)), row_idx);
             // copy the indices into m_stencil's inner indices ptr
-            std::size_t inner_offset = (row.offset() * product_before)+(row.size()*(row_idx%product_before)); 
-            std::size_t inset = row_idx%product_before; 
+            std::size_t inner_offset = (row.offset() * product_before)+(row.size()*FORNFDM_MODULO(row_idx,product_before)); 
+            std::size_t inset = FORNFDM_MODULO(row_idx,product_before); 
             m_stencil.outerIndexPtr()[row_idx] = inner_offset; 
             for(auto i=0; i<row.size(); ++i){
               m_stencil.innerIndexPtr()[inner_offset + i] = inset + product_before * row.index(i);
@@ -364,9 +364,9 @@ class PartialDerivBase<Derived, internal::TimeDepLeftKroneckerTag> : public Eige
           // write node wise expressions into each row of stencil 
           for(std::size_t row_idx=0; row_idx < num_repeats*product_before*axis_size; ++row_idx)
           {
-            typename Evaluator::Row row(eval, m_mesh_raw, (row_idx/product_before)%(m_mesh_raw->sizeOfDim(traits_t::direction)), row_idx);
-            std::size_t inner_offset = (nnz)*(row_idx/(product_before*axis_size))+(row.offset() * product_before)+(row.size()*(row_idx%product_before)); 
-            std::size_t inset = (product_before*axis_size)*(row_idx/(product_before*axis_size)) + (row_idx%product_before); 
+            typename Evaluator::Row row(eval, m_mesh_raw, FORNFDM_MODULO(row_idx/product_before,m_mesh_raw->sizeOfDim(traits_t::direction)), row_idx);
+            std::size_t inner_offset = (nnz)*(row_idx/(product_before*axis_size))+(row.offset() * product_before)+(row.size()*FORNFDM_MODULO(row_idx,product_before)); 
+            std::size_t inset = (product_before*axis_size)*(row_idx/(product_before*axis_size)) + FORNFDM_MODULO(row_idx,product_before); 
             m_stencil.outerIndexPtr()[row_idx] = inner_offset; 
             for(auto i=0; i<row.size(); ++i){
               m_stencil.innerIndexPtr()[inner_offset + i] = inset + product_before * row.index(i);
@@ -397,9 +397,9 @@ class PartialDerivBase<Derived, internal::TimeDepLeftKroneckerTag> : public Eige
           std::size_t product_before = m_mesh_raw->sizesMiddleProduct(0,traits_t::direction); 
           for(std::size_t row_idx=0; row_idx < product_before*axis_size; ++row_idx)
           {
-            typename Evaluator::Row row(eval, m_mesh_raw, (row_idx/product_before)%(m_mesh_raw->sizeOfDim(traits_t::direction)), row_idx);
+            typename Evaluator::Row row(eval, m_mesh_raw, FORNFDM_MODULO(row_idx/product_before, m_mesh_raw->sizeOfDim(traits_t::direction)), row_idx);
             // only copy into valuePtr
-            std::size_t inner_offset = (row.offset() * product_before)+(row.size()*(row_idx%product_before)); 
+            std::size_t inner_offset = (row.offset() * product_before)+(row.size()*FORNFDM_MODULO(row_idx, product_before)); 
             for(auto i=0; i<row.size(); ++i){
               m_stencil.valuePtr()[inner_offset + i] = row.value(i);
             }
@@ -418,8 +418,8 @@ class PartialDerivBase<Derived, internal::TimeDepLeftKroneckerTag> : public Eige
           // write node wise expressions into each row of stencil 
           for(std::size_t row_idx=0; row_idx < num_repeats*product_before*axis_size; ++row_idx)
           {
-            typename Evaluator::Row row(eval, m_mesh_raw, (row_idx/product_before)%(m_mesh_raw->sizeOfDim(traits_t::direction)), row_idx); 
-            std::size_t inner_offset = (nnz)*(row_idx/(product_before*axis_size))+(row.offset() * product_before)+(row.size()*(row_idx%product_before)); 
+            typename Evaluator::Row row(eval, m_mesh_raw, FORNFDM_MODULO(row_idx/product_before, m_mesh_raw->sizeOfDim(traits_t::direction)), row_idx); 
+            std::size_t inner_offset = (nnz)*(row_idx/(product_before*axis_size))+(row.offset() * product_before)+(row.size()*FORNFDM_MODULO(row_idx, product_before)); 
             for(auto i=0; i<row.size(); ++i){
               m_stencil.valuePtr()[inner_offset + i] = row.value(i);
             }

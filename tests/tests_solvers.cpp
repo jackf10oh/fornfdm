@@ -6,7 +6,7 @@
 // 
 // JAF 5/18/2026 
 
-// #define FORNFDM_STORE_FULL_KRONECKER
+// #define FORNFDM_USE_BITWISE_MODULO
 // #define FORNFDM_CUSTOM_SCALAR float
 #include<fornfdm/plugin.hpp>
 #include<fornfdm/all.hpp>
@@ -50,7 +50,7 @@ TEST(SolverSuite, OneDimExplicitSolver){
   constexpr fornfdm::Scalar pi = 3.14159265385; 
   // Domain + Time  
   fornfdm::solvers::SolverArgs args{
-    /*.mesh=*/make_Mesh(fornfdm::linspaced(30,0.0,pi), 1), 
+    /*.mesh=*/make_Mesh(fornfdm::linspaced(32,0.0,pi), 1), 
     /*.times=*/std::make_shared<const fornfdm::Vector>(fornfdm::linspaced(300,0.0,0.5))
   }; 
 
@@ -83,7 +83,7 @@ TEST(SolverSuite, OneDimImplicitSolver){
   constexpr fornfdm::Scalar pi = 3.14159265385; 
   // Domain + Time  
   fornfdm::solvers::SolverArgs args{
-    /*.mesh=*/make_Mesh(fornfdm::linspaced(30,0.0,pi), 1), 
+    /*.mesh=*/make_Mesh(fornfdm::linspaced(32,0.0,pi), 1), 
     /*.times=*/std::make_shared<const fornfdm::Vector>(fornfdm::linspaced(300,0.0,0.5))
   }; 
 
@@ -116,7 +116,7 @@ TEST(SolverSuite, OneDimCrankNicolsonSolver){
   constexpr fornfdm::Scalar pi = 3.14159265385; 
   // Domain + Time  
   fornfdm::solvers::SolverArgs args{
-    /*.mesh=*/make_Mesh(fornfdm::linspaced(30,0.0,pi), 1), 
+    /*.mesh=*/make_Mesh(fornfdm::linspaced(32,0.0,pi), 1), 
     /*.times=*/std::make_shared<const fornfdm::Vector>(fornfdm::linspaced(300,0.0,0.5))
   }; 
 
@@ -149,7 +149,7 @@ TEST(SolverSuite, OneDimFastExpSolver){
   constexpr fornfdm::Scalar pi = 3.14159265385; 
   // Domain + Time  
   fornfdm::solvers::SolverArgs<const Mesh, const solvers::TimeArg> args{
-    /*.mesh=*/make_Mesh(fornfdm::linspaced(30,0.0,pi), 1), 
+    /*.mesh=*/make_Mesh(fornfdm::linspaced(32,0.0,pi), 1), 
     /*times=*/solvers::TimeArg::builder().setStart(0.0).setStop(0.5).setNumSteps(300).build()
   }; 
 
@@ -182,7 +182,7 @@ TEST(SolverSuite, OneDimFastImpSolver){
   constexpr fornfdm::Scalar pi = 3.14159265385; 
   // Domain + Time  
   fornfdm::solvers::SolverArgs<const Mesh, const solvers::TimeArg> args{
-    /*.mesh=*/make_Mesh(fornfdm::linspaced(30,0.0,pi), 1), 
+    /*.mesh=*/make_Mesh(fornfdm::linspaced(32,0.0,pi), 1), 
     /*times=*/solvers::TimeArg::builder().setStart(0.0).setStop(0.5).setNumSteps(300).build()
   }; 
 
@@ -219,8 +219,8 @@ TEST(SolverSuite, OneDimFastImpSolver){
 TEST(InterpolationSuite, HighDimLinearInterpolation){
 
   // 1D test 
-  auto mesh_1d = fornfdm::make_Mesh(fornfdm::linspaced(21,-10.0,10.0),1); 
-  auto mesh_1d_fine = fornfdm::make_Mesh(fornfdm::linspaced(200,-10.0,10.0),1); 
+  auto mesh_1d = fornfdm::make_Mesh(fornfdm::linspaced(16,-10.0,10.0),1); 
+  auto mesh_1d_fine = fornfdm::make_Mesh(fornfdm::linspaced(128,-10.0,10.0),1); 
   auto lam_1d = [](fornfdm::Scalar x){ return 10.54 + 32.7 * x; }; 
   auto vec_1d = discretize(mesh_1d, lam_1d); 
   for(auto i = 0; i < mesh_1d_fine->sizeOfDim(0); ++i)
@@ -232,8 +232,8 @@ TEST(InterpolationSuite, HighDimLinearInterpolation){
   }
 
   // 2D test 
-  auto mesh_2d = fornfdm::make_Mesh(fornfdm::linspaced(21,-10.0,10.0),2); 
-  auto mesh_2d_fine = fornfdm::make_Mesh(fornfdm::linspaced(200,-10.0,10.0),2); 
+  auto mesh_2d = fornfdm::make_Mesh(fornfdm::linspaced(16,-10.0,10.0),2); 
+  auto mesh_2d_fine = fornfdm::make_Mesh(fornfdm::linspaced(128,-10.0,10.0),2); 
   auto lam_2d = [](fornfdm::Scalar x, fornfdm::Scalar y){ return 10.54 + 32.7 * x + 17.2 * y; }; 
   auto vec_2d = discretize(mesh_2d, lam_2d); 
   for(auto i = 0; i < mesh_2d_fine->sizeOfDim(0); ++i)
@@ -249,8 +249,8 @@ TEST(InterpolationSuite, HighDimLinearInterpolation){
 
 
   // 3D test
-  auto mesh_3d = fornfdm::make_Mesh(fornfdm::linspaced(10,-10.0,10.0),3); 
-  auto mesh_3d_fine = fornfdm::make_Mesh(fornfdm::linspaced(50,-10.0,10.0),3); 
+  auto mesh_3d = fornfdm::make_Mesh(fornfdm::linspaced(8,-10.0,10.0),3); 
+  auto mesh_3d_fine = fornfdm::make_Mesh(fornfdm::linspaced(32,-10.0,10.0),3); 
   auto lam_3d = [](fornfdm::Scalar x, fornfdm::Scalar y, fornfdm::Scalar z){ return 10.54 + 32.7 * x + 17.2 * y - 26.49 * z; }; 
   auto vec_3d = discretize(mesh_3d, lam_3d); 
   for(auto i = 0; i < mesh_3d_fine->sizeOfDim(0); ++i)
@@ -274,7 +274,7 @@ TEST(InterpolationSuite, OneDimInterpolator){
   constexpr fornfdm::Scalar pi = 3.14159265385; 
   // Domain + Time  
   fornfdm::solvers::SolverArgs args{
-    /*.mesh=*/std::make_shared<const fornfdm::Mesh>(fornfdm::linspaced(30,0.0,pi), 1), 
+    /*.mesh=*/std::make_shared<const fornfdm::Mesh>(fornfdm::linspaced(32,0.0,pi), 1), 
     /*.times=*/std::make_shared<const fornfdm::RealVector>(fornfdm::linspaced(300,0.0,0.5))
   }; 
 
@@ -296,10 +296,10 @@ TEST(InterpolationSuite, OneDimInterpolator){
   solvers::CrankNicolsonSolver cn_solver(Ut,Uxx,std::tie(bcs)); 
   solvers::Interpolator interp(std::move(cn_solver), args);  
   const auto& axis = args.mesh->getAxis(0); 
-  auto mesh_redone = fornfdm::make_Mesh(fornfdm::linspaced(25,axis[0], axis[axis.size()-1]), 1); 
+  auto mesh_redone = fornfdm::make_Mesh(fornfdm::linspaced(64,axis[0], axis[axis.size()-1]), 1); 
 
   const auto& t_axis = *args.times; 
-  auto times_redone = std::make_shared<const fornfdm::Vector>(fornfdm::linspaced(25,t_axis[0],t_axis[t_axis.size()-1])); 
+  auto times_redone = std::make_shared<const fornfdm::Vector>(fornfdm::linspaced(64,t_axis[0],t_axis[t_axis.size()-1])); 
 
   for(auto i = 0; i < mesh_redone->sizeOfDim(0); ++i)
   {

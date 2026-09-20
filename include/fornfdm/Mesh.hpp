@@ -145,7 +145,7 @@ class Mesh : public std::enable_shared_from_this<Mesh>
       for(std::size_t n=0; n<num_copies; n++)
       {
         // offset from start of current copy 
-        std::size_t offset = (mod ? n % mod : n) + (scale * (n/mod));  
+        std::size_t offset = (mod ? FORNFDM_MODULO(n,mod) : n) + (scale * (n/mod));  
         // begin data ptr of copy  
         auto begin = vec.data()+offset;  
 

@@ -3,7 +3,9 @@
 // JAF 12/12/2025
 
 #include<benchmark/benchmark.h>
+#define FORNFDM_USE_BITWISE_MODULO
 // #define FORNFDM_CUSTOM_SCALAR float
+#include<fornfdm/plugin.hpp>
 #include<fornfdm/all.hpp>
 using namespace fornfdm;
 
@@ -26,40 +28,15 @@ static void fornberg_algo(benchmark::State &state)
   }
 };
 
-static void setMesh_order_1_direction_0(benchmark::State &state)
+template<std::size_t order, std::size_t direction>
+static void setMesh_order_direction(benchmark::State &state)
 {
   for (auto _ : state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r+1,0.0,double(r)), 1); 
+    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), direction+1); 
     linops::NthPartialDeriv<1,0> D; 
-    state.ResumeTiming(); 
-    D.setMesh(mesh); 
-  }
-};
-
-static void setMesh_order_2_direction_0(benchmark::State &state)
-{
-  for (auto _ : state)
-  {
-    state.PauseTiming();
-    int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r+1,0.0,double(r)), 1); 
-    linops::NthPartialDeriv<2,0> D; 
-    state.ResumeTiming(); 
-    D.setMesh(mesh); 
-  }
-};
-
-static void setMesh_order_3_direction_0(benchmark::State &state)
-{
-  for (auto _ : state)
-  {
-    state.PauseTiming();
-    int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r+1,0.0,double(r)), 1); 
-    linops::NthPartialDeriv<3,0> D; 
     state.ResumeTiming(); 
     D.setMesh(mesh); 
   }
@@ -71,7 +48,7 @@ static void setMesh_saxby(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r+1,0.0,double(r)), 1); 
+    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 1); 
     auto D = 4.0 * linops::NthPartialDeriv<1,0>{} + linops::NthPartialDeriv<2,0>{}; 
     state.ResumeTiming(); 
     D.setMesh(mesh); 
@@ -84,7 +61,7 @@ static void setMesh_sum(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r+1,0.0,double(r)), 1); 
+    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 1); 
     auto D = linops::NthPartialDeriv<1,0>{} + linops::NthPartialDeriv<2,0>{}; 
     state.ResumeTiming(); 
     D.setMesh(mesh); 
@@ -98,7 +75,7 @@ static void setTime_arity_0(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r+1,0.0,double(r)), 1); 
+    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 1); 
     linops::TimeDepCoeff c = [](fornfdm::Real t){ return std::sin(t); };
     auto xpr = c * linops::NthPartialDeriv<1,0>{};  
     xpr.setMesh(mesh); 
@@ -117,7 +94,7 @@ static void setMesh_2d(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r+1,0.0,double(r)), 2);
+    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 2);
     linops::AutonomousCoeff func = [](fornfdm::Scalar x, fornfdm::Scalar y){ return y + x*x; };  
     auto D = func * linops::NthPartialDeriv<1,1>{} + linops::NthPartialDeriv<2,1>{}; 
     state.ResumeTiming(); 
@@ -131,7 +108,7 @@ static void setMesh_2d_assignment(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r+1,0.0,double(r)), 2);
+    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 2);
     linops::AutonomousCoeff func = [](fornfdm::Scalar x, fornfdm::Scalar y){ return y + x*x; };  
     auto D = func * linops::NthPartialDeriv<1,1>{} + linops::NthPartialDeriv<2,1>{}; 
     D.setMesh(mesh); 
@@ -148,7 +125,7 @@ static void setTime_assignment(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r+1,0.0,double(r)), 1);
+    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 1);
     linops::TimeDepCoeff func = [](fornfdm::Real t, fornfdm::Scalar x){ return t + x*x; };  
     auto D = func * linops::NthPartialDeriv<1,0>{} + linops::NthPartialDeriv<2,0>{}; 
     D.setMesh(mesh); 
@@ -167,7 +144,7 @@ static void setTime_2d_assignment(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r+1,0.0,double(r)), 2);
+    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 2);
     linops::TimeDepCoeff func = [](fornfdm::Real t, fornfdm::Scalar x){ return t + x*x; };  
     auto D = func * linops::NthPartialDeriv<1,1>{} + linops::NthPartialDeriv<2,1>{}; 
     D.setMesh(mesh); 
@@ -184,7 +161,7 @@ static void evalTime_2d_assignment(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r+1,0.0,double(r)), 2);
+    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 2);
     linops::TimeDepCoeff func = [](fornfdm::Real t, fornfdm::Scalar x){ return t + x*x; };  
     auto D = func * linops::NthPartialDeriv<1,1>{} + linops::NthPartialDeriv<2,1>{}; 
     D.setMesh(mesh); 
@@ -200,7 +177,7 @@ static void evalTime_assignment(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r+1,0.0,double(r)), 1);
+    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 1);
     linops::TimeDepCoeff func = [](fornfdm::Real t, fornfdm::Scalar x){ return t + x*x; };  
     auto D = func * linops::NthPartialDeriv<1,0>{} + linops::NthPartialDeriv<2,0>{}; 
     D.setMesh(mesh); 
@@ -393,40 +370,41 @@ static void fast_implicit_solver_1d(benchmark::State &state)
   }
 }
 
-// Fornberg 
+// Fornberg ------------------------
 BENCHMARK(fornberg_algo)->Args({1,2})->Args({1,3})->Args({2,3})->Args({1,4})->Args({2,4})->Args({3,4});
 
-// linops
-BENCHMARK(setMesh_order_1_direction_0)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(setMesh_order_2_direction_0)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(setMesh_order_3_direction_0)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(setMesh_saxby)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(setMesh_sum)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(setTime_arity_0)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(setTime_arity_0</*warmup*/true>)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(setMesh_2d)->Arg(10)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(setMesh_2d_assignment)->Arg(10)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(setTime_assignment)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(setTime_assignment</*warmup*/true>)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(evalTime_assignment)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(evalTime_2d_assignment)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(setTime_2d_assignment)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
+// linops ------------------
+BENCHMARK(setMesh_order_direction<1,0>)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(setMesh_order_direction<1,1>)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(setMesh_order_direction<2,0>)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(setMesh_order_direction<3,0>)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(setMesh_saxby)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(setMesh_sum)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(setTime_arity_0)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(setTime_arity_0</*warmup*/true>)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(setMesh_2d)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(setMesh_2d_assignment)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(setTime_assignment)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(setTime_assignment</*warmup*/true>)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(evalTime_assignment)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(evalTime_2d_assignment)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(setTime_2d_assignment)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
 
-// texprs
-BENCHMARK(Executor_getRhsExpression_assignment<1>)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(Executor_getRhsExpression_assignment<2>)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(Executor_getRhsExpression_assignment<4>)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(Executor_rotateStoredSolutions<1>)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(Executor_rotateStoredSolutions<2>)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
-BENCHMARK(Executor_rotateStoredSolutions<4>)->Arg(100)->Arg(200)->Arg(400)->Arg(800);
+// texprs --------------------------
+BENCHMARK(Executor_getRhsExpression_assignment<1>)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(Executor_getRhsExpression_assignment<2>)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(Executor_getRhsExpression_assignment<4>)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(Executor_rotateStoredSolutions<1>)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(Executor_rotateStoredSolutions<2>)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(Executor_rotateStoredSolutions<4>)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
 
-// solvers(explicit)
-BENCHMARK(fast_explicit_solver_1d)->Args({100,100})->Args({100,200})->Args({100,400})->Args({100,800});
-BENCHMARK(explicit_solver_1d<solvers::ExplicitSolver>)->Args({100,100})->Args({100,200})->Args({100,400})->Args({100,800});
+// solvers(explicit) ------------------------
+BENCHMARK(fast_explicit_solver_1d)->Args({64,64})->Args({64,128})->Args({64,256})->Args({64,512});
+BENCHMARK(explicit_solver_1d<solvers::ExplicitSolver>)->Args({64,64})->Args({64,128})->Args({64,256})->Args({64,512});
 
-// solvers(implicit)
-BENCHMARK(fast_implicit_solver_1d<Eigen::BiCGSTAB>)->Args({100,100})->Args({100,200})->Args({100,400})->Args({100,800});
-BENCHMARK(implicit_solver_1d<solvers::ImplicitSolver,Eigen::BiCGSTAB>)->Args({100,100})->Args({100,200})->Args({100,400})->Args({100,800});
-BENCHMARK(implicit_solver_1d<solvers::CrankNicolsonSolver,Eigen::BiCGSTAB>)->Args({100,100})->Args({100,200})->Args({100,400})->Args({100,800});
+// solvers(implicit) ------------------------
+BENCHMARK(fast_implicit_solver_1d<Eigen::BiCGSTAB>)->Args({64,64})->Args({64,128})->Args({64,256})->Args({64,512});
+BENCHMARK(implicit_solver_1d<solvers::ImplicitSolver,Eigen::BiCGSTAB>)->Args({64,64})->Args({64,128})->Args({64,256})->Args({64,512});
+BENCHMARK(implicit_solver_1d<solvers::CrankNicolsonSolver,Eigen::BiCGSTAB>)->Args({64,64})->Args({64,128})->Args({64,256})->Args({64,512});
 
 BENCHMARK_MAIN();

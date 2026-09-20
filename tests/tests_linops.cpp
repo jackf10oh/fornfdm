@@ -6,7 +6,7 @@
 // 
 // JAF 7/4/2026 
 
-// #define FORNFDM_STORE_FULL_KRONECKER
+// #define FORNFDM_USE_BITWISE_MODULO
 // #define FORNFDM_CUSTOM_SCALAR float
 #include<fornfdm/plugin.hpp>
 #include<fornfdm/all.hpp>
@@ -91,7 +91,7 @@ TEST(LinopsSuite, BasicInterface){
   linops::NthPartialDeriv<1, 0> Ux;
 
   // setter + getter to domain
-  auto mesh = make_Mesh(fornfdm::linspaced(21,0.0,20.0));
+  auto mesh = make_Mesh(fornfdm::linspaced(32,0.0,20.0));
   Ux.setMesh(mesh);
   std::shared_ptr<const fornfdm::Mesh> copy = Ux.getMesh();
   
@@ -106,7 +106,7 @@ TEST(LinopsSuite, BinaryAddition){
   linops::NthPartialDeriv<2, 0, linops::Forward<4>> Uxx;
   auto xpr = Ux + Uxx;
 
-  const std::size_t n = 21;
+  const std::size_t n = 32;
   auto mesh = fornfdm::make_Mesh(fornfdm::linspaced(n,0.0,n-1));
   Ux.setMesh(mesh);
   Uxx.setMesh(mesh);
@@ -129,7 +129,7 @@ TEST(LinopsSuite, BinarySubtraction){
   linops::NthPartialDeriv<2, 0, linops::Forward<4>> Uxx;
   auto xpr = Ux - Uxx;
 
-  const std::size_t n = 21;
+  const std::size_t n = 32;
   auto mesh = fornfdm::make_Mesh(fornfdm::linspaced(n,0.0,n-1));
   Ux.setMesh(mesh);
   Uxx.setMesh(mesh);
@@ -152,7 +152,7 @@ TEST(LinopsSuite, UnaryNegation){
   linops::NthPartialDeriv<2, 0, linops::Forward<4>> Uxx;
   auto xpr = -Ux;
 
-  const std::size_t n = 21;
+  const std::size_t n = 32;
   auto mesh = fornfdm::make_Mesh(fornfdm::linspaced(n,0.0,n-1));
   Ux.setMesh(mesh);
   Uxx.setMesh(mesh);
@@ -174,7 +174,7 @@ TEST(LinopsSuite, ScalarLeftMultiply){
   linops::NthPartialDeriv<1, 0, linops::Forward<4>> Ux;
   linops::NthPartialDeriv<2, 0, linops::Forward<4>> Uxx;
 
-  const std::size_t n = 21;
+  const std::size_t n = 32;
   auto mesh = fornfdm::make_Mesh(fornfdm::linspaced(n,0.0,n-1));
   Ux.setMesh(mesh);
   Uxx.setMesh(mesh);
@@ -209,7 +209,7 @@ TEST(LinopsSuite, AutonCoeffProduct1D){
   linops::NthPartialDeriv<1, 0, linops::Forward<4>> Ux;
   linops::NthPartialDeriv<2, 0, linops::Forward<4>> Uxx;
 
-  const std::size_t n = 21;
+  const std::size_t n = 32;
   auto mesh = fornfdm::make_Mesh(fornfdm::linspaced(n,0.0,n-1));
   Ux.setMesh(mesh);
   Uxx.setMesh(mesh);
@@ -246,7 +246,7 @@ TEST(LinopsSuite, TimeDepProduct1D){
   linops::NthPartialDeriv<1, 0, linops::Forward<4>> Ux;
   linops::NthPartialDeriv<2, 0, linops::Forward<4>> Uxx;
 
-  const std::size_t n = 21;
+  const std::size_t n = 32;
   auto mesh = fornfdm::make_Mesh(fornfdm::linspaced(n,0.0,n-1));
   Ux.setMesh(mesh);
   Uxx.setMesh(mesh);
@@ -304,12 +304,12 @@ TEST(LinopsSuite, EvalTimeMatchesSetTime1D){
       }
     }
   };
-  test_lam(20, 0.0); 
-  test_lam(20, 1.0); 
-  test_lam(20, 4.0);
-  test_lam(100, 0.0); 
-  test_lam(100, 1.0); 
-  test_lam(100, 4.0);
+  test_lam(32, 0.0); 
+  test_lam(32, 1.0); 
+  test_lam(32, 4.0);
+  test_lam(128, 0.0); 
+  test_lam(128, 1.0); 
+  test_lam(128, 4.0);
 }
 
 TEST(LinopsSuite, EvalTimeMatchesSetTime2D_pt1){
@@ -338,11 +338,11 @@ TEST(LinopsSuite, EvalTimeMatchesSetTime2D_pt1){
       }
     }
   };
-  test_lam(11, 11, 0.0); 
-  test_lam(11, 21, 1.0); 
-  test_lam(6, 6, 4.0);
-  test_lam(17, 10, 9.0); 
-  test_lam(31, 5, 1.0); 
+  test_lam(16, 16, 0.0); 
+  test_lam(16, 32, 1.0); 
+  test_lam(8, 8, 4.0);
+  test_lam(16, 8, 9.0); 
+  test_lam(32, 4, 1.0); 
 }
 
 TEST(LinopsSuite, EvalTimeMatchesSetTime2D){
@@ -377,17 +377,17 @@ TEST(LinopsSuite, EvalTimeMatchesSetTime2D){
       }
     }
   };
-  test_lam(5, 5, 0.0);
-  test_lam(11, 11, 1.0);
-  test_lam(11, 11, 4.0); 
+  test_lam(4, 4, 0.0);
+  test_lam(16, 16, 1.0);
+  test_lam(16, 16, 4.0); 
 
-  test_lam(5, 7, 0.0);
-  test_lam(11, 21, 3.0);
-  test_lam(11, 21, 7.0); 
+  test_lam(4, 8, 0.0);
+  test_lam(16, 32, 3.0);
+  test_lam(16, 32, 7.0); 
 
-  test_lam(7, 5, 9.0);
-  test_lam(21, 21, 14.0);
-  test_lam(21, 21, 4.0); 
+  test_lam(8, 4, 9.0);
+  test_lam(32, 32, 14.0);
+  test_lam(32, 32, 4.0); 
   
 }
 
@@ -414,12 +414,12 @@ TEST(LinopsSuite, MatrixFreeMatches1D){
       }
     }
   };
-  test_lam(20, 0.0); 
-  test_lam(20, 1.0); 
-  test_lam(20, 4.0);
-  test_lam(100, 0.0); 
-  test_lam(100, 1.0); 
-  test_lam(100, 4.0);
+  test_lam(32, 0.0); 
+  test_lam(32, 1.0); 
+  test_lam(32, 4.0);
+  test_lam(128, 0.0); 
+  test_lam(128, 1.0); 
+  test_lam(128, 4.0);
 }
 
 TEST(LinopsSuite, MatrixFreeMatches2D_prt1){
@@ -449,11 +449,11 @@ TEST(LinopsSuite, MatrixFreeMatches2D_prt1){
       }
     }
   };
-  test_lam(11, 11, 0.0); 
-  test_lam(11, 21, 1.0); 
-  test_lam(6, 6, 4.0);
-  test_lam(17, 10, 9.0); 
-  test_lam(31, 5, 1.0); 
+  test_lam(16, 16, 0.0); 
+  test_lam(16, 32, 1.0); 
+  test_lam(8, 8, 4.0);
+  test_lam(16, 8, 9.0); 
+  test_lam(32, 4, 1.0); 
 }
 
 TEST(LinopsSuite, MatrixFreeMatches2D_prt2){
@@ -492,17 +492,17 @@ TEST(LinopsSuite, MatrixFreeMatches2D_prt2){
       }
     }
   };
-  test_lam(5, 5, 0.0);
-  test_lam(11, 11, 1.0);
-  test_lam(11, 11, 4.0); 
+  test_lam(4, 4, 0.0);
+  test_lam(16, 16, 1.0);
+  test_lam(16, 16, 4.0); 
 
-  test_lam(5, 7, 0.0);
-  test_lam(11, 21, 3.0);
-  test_lam(11, 21, 7.0); 
+  test_lam(4, 8, 0.0);
+  test_lam(16, 32, 3.0);
+  test_lam(16, 32, 7.0); 
 
-  test_lam(7, 5, 9.0);
-  test_lam(21, 21, 14.0);
-  test_lam(21, 21, 4.0); 
+  test_lam(8, 4, 9.0);
+  test_lam(32, 32, 14.0);
+  test_lam(32, 32, 4.0); 
   
 }
 
@@ -536,17 +536,17 @@ TEST(LinopsSuite, MatrixFreeCopyAndMove){
       }
     }
   };
-  test_lam(5, 5, 0.0);
-  test_lam(11, 11, 1.0);
-  test_lam(11, 11, 4.0); 
+  test_lam(4, 4, 0.0);
+  test_lam(16, 16, 1.0);
+  test_lam(16, 16, 4.0); 
 
-  test_lam(5, 7, 0.0);
-  test_lam(11, 21, 3.0);
-  test_lam(11, 21, 7.0); 
+  test_lam(4, 8, 0.0);
+  test_lam(16, 32, 3.0);
+  test_lam(16, 32, 7.0); 
 
-  test_lam(7, 5, 9.0);
-  test_lam(21, 21, 14.0);
-  test_lam(21, 21, 4.0); 
+  test_lam(8, 4, 9.0);
+  test_lam(32, 32, 14.0);
+  test_lam(32, 32, 4.0); 
 }
 
 // TODO higher dimension tests
