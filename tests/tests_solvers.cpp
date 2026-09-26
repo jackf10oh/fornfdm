@@ -6,7 +6,7 @@
 // 
 // JAF 5/18/2026 
 
-// #define FORNFDM_USE_BITWISE_MODULO
+// #define FORNFDM_USE_BITWISE_OPS
 // #define FORNFDM_CUSTOM_SCALAR float
 #include<fornfdm/plugin.hpp>
 #include<fornfdm/all.hpp>

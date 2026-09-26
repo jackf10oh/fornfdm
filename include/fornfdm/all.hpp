@@ -9,6 +9,7 @@
 #define FORNFDM_ALL_H
 
 // #include "plugin.hpp" // not forced in includes
+#include "config.hpp"
 #include "types.hpp"
 #include "traits.hpp"
 #include "Mesh.hpp" 

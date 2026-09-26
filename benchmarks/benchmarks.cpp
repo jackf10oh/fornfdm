@@ -3,7 +3,7 @@
 // JAF 12/12/2025
 
 #include<benchmark/benchmark.h>
-#define FORNFDM_USE_BITWISE_MODULO
+#define FORNFDM_USE_BITWISE_OPS
 // #define FORNFDM_CUSTOM_SCALAR float
 #include<fornfdm/plugin.hpp>
 #include<fornfdm/all.hpp>
