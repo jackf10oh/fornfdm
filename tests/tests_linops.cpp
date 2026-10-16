@@ -91,7 +91,7 @@ TEST(LinopsSuite, BasicInterface){
   linops::NthPartialDeriv<1, 0> Ux;
 
   // setter + getter to domain
-  auto mesh = make_Mesh(fornfdm::linspaced(32,0.0,20.0));
+  auto mesh = Mesh::create(1)->setAxis(0,fornfdm::linspaced(32,0.0,20.0));
   Ux.setMesh(mesh);
   std::shared_ptr<const fornfdm::Mesh> copy = Ux.getMesh();
   
@@ -107,7 +107,7 @@ TEST(LinopsSuite, BinaryAddition){
   auto xpr = Ux + Uxx;
 
   const std::size_t n = 32;
-  auto mesh = fornfdm::make_Mesh(fornfdm::linspaced(n,0.0,n-1));
+  auto mesh = Mesh::create(1)->setAxis(0,fornfdm::linspaced(n,0.0,n-1));
   Ux.setMesh(mesh);
   Uxx.setMesh(mesh);
   xpr.setMesh(mesh);
@@ -130,7 +130,7 @@ TEST(LinopsSuite, BinarySubtraction){
   auto xpr = Ux - Uxx;
 
   const std::size_t n = 32;
-  auto mesh = fornfdm::make_Mesh(fornfdm::linspaced(n,0.0,n-1));
+  auto mesh = Mesh::create(1)->setAxis(0,fornfdm::linspaced(n,0.0,n-1));
   Ux.setMesh(mesh);
   Uxx.setMesh(mesh);
   xpr.setMesh(mesh);
@@ -153,7 +153,7 @@ TEST(LinopsSuite, UnaryNegation){
   auto xpr = -Ux;
 
   const std::size_t n = 32;
-  auto mesh = fornfdm::make_Mesh(fornfdm::linspaced(n,0.0,n-1));
+  auto mesh = Mesh::create(1)->setAxis(0,fornfdm::linspaced(n,0.0,n-1));
   Ux.setMesh(mesh);
   Uxx.setMesh(mesh);
   xpr.setMesh(mesh);
@@ -175,7 +175,7 @@ TEST(LinopsSuite, ScalarLeftMultiply){
   linops::NthPartialDeriv<2, 0, linops::Forward<4>> Uxx;
 
   const std::size_t n = 32;
-  auto mesh = fornfdm::make_Mesh(fornfdm::linspaced(n,0.0,n-1));
+  auto mesh = Mesh::create(1)->setAxis(0,fornfdm::linspaced(n,0.0,n-1));
   Ux.setMesh(mesh);
   Uxx.setMesh(mesh);
 
@@ -210,7 +210,7 @@ TEST(LinopsSuite, AutonCoeffProduct1D){
   linops::NthPartialDeriv<2, 0, linops::Forward<4>> Uxx;
 
   const std::size_t n = 32;
-  auto mesh = fornfdm::make_Mesh(fornfdm::linspaced(n,0.0,n-1));
+  auto mesh = Mesh::create(1)->setAxis(0,fornfdm::linspaced(n,0.0,n-1));
   Ux.setMesh(mesh);
   Uxx.setMesh(mesh);
 
@@ -247,7 +247,7 @@ TEST(LinopsSuite, TimeDepProduct1D){
   linops::NthPartialDeriv<2, 0, linops::Forward<4>> Uxx;
 
   const std::size_t n = 32;
-  auto mesh = fornfdm::make_Mesh(fornfdm::linspaced(n,0.0,n-1));
+  auto mesh = Mesh::create(1)->setAxis(0,fornfdm::linspaced(n,0.0,n-1));
   Ux.setMesh(mesh);
   Uxx.setMesh(mesh);
 
@@ -289,7 +289,7 @@ TEST(LinopsSuite, EvalTimeMatchesSetTime1D){
 
   auto test_lam = [&](int nrows, fornfdm::Real t)
   {
-    auto mesh = make_Mesh(fornfdm::linspaced(nrows, 0.0, nrows-1),1);
+  auto mesh = Mesh::create(1)->setAxis(0,fornfdm::linspaced(nrows,0.0,nrows-1));
     xpr.setMesh(mesh); 
     fornfdm::CSRMatrix eval_stencil = xpr.evalTime(t); 
     
@@ -318,7 +318,10 @@ TEST(LinopsSuite, EvalTimeMatchesSetTime2D_pt1){
 
   auto test_lam = [&](int nrows, int mrows, fornfdm::Real t)
   {
-    auto mesh = make_Mesh(fornfdm::linspaced(nrows, 0.0, nrows-1),fornfdm::linspaced(mrows, 0.0,mrows-1));
+    auto mesh = Mesh::create(2)
+          ->setAxis(0,fornfdm::linspaced(nrows,0.0,nrows-1))
+          ->setAxis(1,fornfdm::linspaced(mrows,0.0,mrows-1));
+
     xpr.setMesh(mesh); 
     fornfdm::CSRMatrix eval_stencil = xpr.evalTime(t); 
     
@@ -353,9 +356,11 @@ TEST(LinopsSuite, EvalTimeMatchesSetTime2D){
   linops::TimeDepCoeff c = [](fornfdm::Real t, fornfdm::Scalar x){ return t + x*x; };
   auto dir_01 = c * linops::NthPartialDeriv<1,1>{} + linops::NthPartialDeriv<2,1>{}; 
 
-  auto test_lam = [&](int n, int m, fornfdm::Real t)
+  auto test_lam = [&](int nrows, int mrows, fornfdm::Real t)
   {
-    auto mesh = make_Mesh(fornfdm::linspaced(n, 0.0, n-1),fornfdm::linspaced(m, 0.0, m-1));
+    auto mesh = Mesh::create(2)
+          ->setAxis(0,fornfdm::linspaced(nrows,0.0,nrows-1))
+          ->setAxis(1,fornfdm::linspaced(mrows,0.0,mrows-1));
   
     auto xpr = dir_01 - dir_00;    
     xpr.setMesh(mesh); 
@@ -397,7 +402,8 @@ TEST(LinopsSuite, MatrixFreeMatches1D){
   linops::MatrixFree storing(xpr); 
   auto test_lam = [&](int nrows, fornfdm::Real t)
   {
-    auto mesh = make_Mesh(fornfdm::linspaced(nrows, 0.0, nrows-1),1);
+    auto mesh = Mesh::create(1)
+          ->setAxis(0,fornfdm::linspaced(nrows,0.0,nrows-1));
     xpr.setMesh(mesh); 
     xpr.setTime(t); 
     fornfdm::CSRMatrix set_stencil = xpr; 
@@ -428,7 +434,9 @@ TEST(LinopsSuite, MatrixFreeMatches2D_prt1){
   auto storing = linops::MatrixFree(xpr); 
   auto test_lam = [&](int nrows, int mrows, fornfdm::Real t)
   {
-    auto mesh = make_Mesh(fornfdm::linspaced(nrows, 0.0, nrows-1),fornfdm::linspaced(mrows, 0.0,mrows-1));
+    auto mesh = Mesh::create(2)
+        ->setAxis(0,fornfdm::linspaced(nrows,0.0,nrows-1))
+        ->setAxis(1,fornfdm::linspaced(mrows,0.0,mrows-1));
     xpr.setMesh(mesh); 
     xpr.setTime(t); 
     fornfdm::CSRMatrix set_stencil = xpr;
@@ -464,10 +472,12 @@ TEST(LinopsSuite, MatrixFreeMatches2D_prt2){
   linops::TimeDepCoeff c = [](fornfdm::Real t, fornfdm::Scalar x){ return t + x*x; };
   auto dir_01 = c * linops::NthPartialDeriv<1,1>{} + linops::NthPartialDeriv<2,1>{}; 
 
-  auto test_lam = [&](int n, int m, fornfdm::Real t)
+  auto test_lam = [&](int nrows, int mrows, fornfdm::Real t)
   {
-    auto mesh = make_Mesh(fornfdm::linspaced(n, 0.0, n-1),fornfdm::linspaced(m, 0.0, m-1));
-  
+    auto mesh = Mesh::create(2)
+        ->setAxis(0,fornfdm::linspaced(nrows,0.0,nrows-1))
+        ->setAxis(1,fornfdm::linspaced(mrows,0.0,mrows-1));
+
     auto xpr = dir_01 - dir_00;    
     xpr.setMesh(mesh); 
     xpr.setTime(t); 
@@ -511,9 +521,11 @@ TEST(LinopsSuite, MatrixFreeCopyAndMove){
   linops::AutonomousCoeff a = [](fornfdm::Scalar x, fornfdm::Scalar y){ return x * y + y;}; 
   auto xpr = a * linops::NthPartialDeriv<2,0>{};
 
-  auto test_lam = [&](int n, int m, fornfdm::Real t)
+  auto test_lam = [&](int nrows, int mrows, fornfdm::Real t)
   {
-    auto mesh = make_Mesh(fornfdm::linspaced(n, 0.0, n-1),fornfdm::linspaced(m, 0.0, m-1));
+    auto mesh = Mesh::create(2)
+        ->setAxis(0,fornfdm::linspaced(nrows,0.0,nrows-1))
+        ->setAxis(1,fornfdm::linspaced(mrows,0.0,mrows-1));
   
     linops::MatrixFree storing(xpr);   
     storing.setMesh(mesh);

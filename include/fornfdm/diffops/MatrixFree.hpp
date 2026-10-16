@@ -244,7 +244,7 @@ private internal::TimeDepData<internal::traits<XprType>::is_timedep>
       constexpr std::size_t count_of_orders = internal::count_orders< typename traits_t::orders >::value;
       m_mesh_observed = m;
       m_prod_after = m->sizesMiddleProduct(traits_t::direction + 1, m->numDims());
-      const fornfdm::Vector& axis = m->getAxis(traits_t::direction);
+      const fornfdm::Axis& axis = m->getAxis(traits_t::direction);
       std::size_t axis_size = m->sizeOfDim(traits_t::direction);
       std::size_t nnz = Selector::sumNodesPerRow(axis);
 
@@ -424,7 +424,7 @@ private internal::TimeDepData<internal::traits<XprType>::is_timedep>
       m_mesh_observed = m;
       m_prod_before = m->sizesMiddleProduct(0,traits_t::direction); 
       m_prod_after = m->sizesMiddleProduct(traits_t::direction + 1, m->numDims());
-      const fornfdm::Vector& axis = m->getAxis(traits_t::direction);
+      const fornfdm::Axis& axis = m->getAxis(traits_t::direction);
       std::size_t axis_size = m->sizeOfDim(traits_t::direction);
       std::size_t nnz = Selector::sumNodesPerRow(axis);
 

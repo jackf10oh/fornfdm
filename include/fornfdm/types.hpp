@@ -34,8 +34,10 @@ using WeakConstMesh = std::weak_ptr<const Mesh>;
 using Scalar = FORNFDM_CUSTOM_SCALAR;
 using Real = FORNFDM_CUSTOM_REAL; 
  
+using Axis = std::pmr::vector<fornfdm::Scalar>;
 using Vector = typename Eigen::Matrix<fornfdm::Scalar, Eigen::Dynamic, 1>; 
 using RealVector = typename Eigen::Matrix<fornfdm::Real, Eigen::Dynamic, 1>; 
+using DenseMatrix = typename Eigen::Matrix<fornfdm::Scalar, Eigen::Dynamic, Eigen::Dynamic>; 
 using CSRMatrix = Eigen::SparseMatrix<Scalar, Eigen::RowMajor, Eigen::Index>; // Compressed Sparse Row (CSR) Matrix
 using DiagMatrix = Eigen::DiagonalMatrix<fornfdm::Scalar,::Eigen::Dynamic>; // Diagonal Matrix 
 using StrideRef = typename Eigen::Ref<fornfdm::Vector, 0, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>>; 

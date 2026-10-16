@@ -35,7 +35,8 @@ static void setMesh_order_direction(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), direction+1); 
+    auto mesh = Mesh::create(direction+1);
+    for(std::size_t i=0; i<=direction; ++i) mesh->setAxis(i,linspaced(r,0.0,double(r-1))); 
     linops::NthPartialDeriv<1,0> D; 
     state.ResumeTiming(); 
     D.setMesh(mesh); 
@@ -48,7 +49,8 @@ static void setMesh_saxby(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 1); 
+    auto mesh = Mesh::create(1)
+        ->setAxis(0,linspaced(r,0.0,double(r-1)));
     auto D = 4.0 * linops::NthPartialDeriv<1,0>{} + linops::NthPartialDeriv<2,0>{}; 
     state.ResumeTiming(); 
     D.setMesh(mesh); 
@@ -61,7 +63,8 @@ static void setMesh_sum(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 1); 
+    auto mesh = Mesh::create(1)
+        ->setAxis(0,linspaced(r,0.0,double(r-1)));
     auto D = linops::NthPartialDeriv<1,0>{} + linops::NthPartialDeriv<2,0>{}; 
     state.ResumeTiming(); 
     D.setMesh(mesh); 
@@ -75,7 +78,8 @@ static void setTime_arity_0(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 1); 
+    auto mesh = Mesh::create(1)
+        ->setAxis(0,linspaced(r,0.0,double(r-1)));
     linops::TimeDepCoeff c = [](fornfdm::Real t){ return std::sin(t); };
     auto xpr = c * linops::NthPartialDeriv<1,0>{};  
     xpr.setMesh(mesh); 
@@ -94,7 +98,9 @@ static void setMesh_2d(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 2);
+    auto mesh = Mesh::create(2)
+        ->setAxis(0,linspaced(r,0.0,double(r-1)))
+        ->setAxis(1,linspaced(r,0.0,double(r-1)));
     linops::AutonomousCoeff func = [](fornfdm::Scalar x, fornfdm::Scalar y){ return y + x*x; };  
     auto D = func * linops::NthPartialDeriv<1,1>{} + linops::NthPartialDeriv<2,1>{}; 
     state.ResumeTiming(); 
@@ -108,7 +114,9 @@ static void setMesh_2d_assignment(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 2);
+    auto mesh = Mesh::create(2)
+        ->setAxis(0,linspaced(r,0.0,double(r-1)))
+        ->setAxis(1,linspaced(r,0.0,double(r-1)));
     linops::AutonomousCoeff func = [](fornfdm::Scalar x, fornfdm::Scalar y){ return y + x*x; };  
     auto D = func * linops::NthPartialDeriv<1,1>{} + linops::NthPartialDeriv<2,1>{}; 
     D.setMesh(mesh); 
@@ -125,7 +133,8 @@ static void setTime_assignment(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 1);
+    auto mesh = Mesh::create(1)
+        ->setAxis(0,linspaced(r,0.0,double(r-1)));
     linops::TimeDepCoeff func = [](fornfdm::Real t, fornfdm::Scalar x){ return t + x*x; };  
     auto D = func * linops::NthPartialDeriv<1,0>{} + linops::NthPartialDeriv<2,0>{}; 
     D.setMesh(mesh); 
@@ -144,7 +153,9 @@ static void setTime_2d_assignment(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 2);
+    auto mesh = Mesh::create(2)
+        ->setAxis(0,linspaced(r,0.0,double(r-1)))
+        ->setAxis(1,linspaced(r,0.0,double(r-1)));
     linops::TimeDepCoeff func = [](fornfdm::Real t, fornfdm::Scalar x){ return t + x*x; };  
     auto D = func * linops::NthPartialDeriv<1,1>{} + linops::NthPartialDeriv<2,1>{}; 
     D.setMesh(mesh); 
@@ -161,7 +172,9 @@ static void evalTime_2d_assignment(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 2);
+    auto mesh = Mesh::create(2)
+        ->setAxis(0,linspaced(r,0.0,double(r-1)))
+        ->setAxis(1,linspaced(r,0.0,double(r-1)));
     linops::TimeDepCoeff func = [](fornfdm::Real t, fornfdm::Scalar x){ return t + x*x; };  
     auto D = func * linops::NthPartialDeriv<1,1>{} + linops::NthPartialDeriv<2,1>{}; 
     D.setMesh(mesh); 
@@ -177,7 +190,8 @@ static void evalTime_assignment(benchmark::State &state)
   {
     state.PauseTiming();
     int r = state.range(0);  
-    auto mesh = make_Mesh(linspaced(r,0.0,double(r-1)), 1);
+    auto mesh = Mesh::create(2)
+        ->setAxis(0,linspaced(r,0.0,double(r-1)));
     linops::TimeDepCoeff func = [](fornfdm::Real t, fornfdm::Scalar x){ return t + x*x; };  
     auto D = func * linops::NthPartialDeriv<1,0>{} + linops::NthPartialDeriv<2,0>{}; 
     D.setMesh(mesh); 
@@ -243,7 +257,7 @@ static void explicit_solver_1d(benchmark::State& state)
 
     // uniform mesh from 0.0 to r with n_gridpoints
     solvers::SolverArgs args{
-      .mesh = make_Mesh(linspaced(n_gridpoints,0.0,pi),1),
+      .mesh = Mesh::create(1)->setAxis(0,linspaced(n_gridpoints,0.0,pi)),
       .times = std::make_shared<const fornfdm::RealVector>(linspaced(m_timesteps,0.0,pi))
     };
     args.initialConditions = { discretize(args.mesh, [](fornfdm::Scalar x){ return std::sin(x); }) };
@@ -278,7 +292,7 @@ static void implicit_solver_1d(benchmark::State& state)
 
     // uniform mesh from 0.0 to r with n_gridpoints
     solvers::SolverArgs args{
-      .mesh = make_Mesh(linspaced(n_gridpoints,0.0,pi),1),
+      .mesh = Mesh::create(1)->setAxis(0,linspaced(n_gridpoints,0.0,pi)),
       .times = std::make_shared<const fornfdm::RealVector>(linspaced(m_timesteps,0.0,pi))
     };
     args.initialConditions = { discretize(args.mesh, [](fornfdm::Scalar x){ return std::sin(x); }) };
@@ -312,7 +326,7 @@ static void fast_explicit_solver_1d(benchmark::State &state)
 
     // uniform mesh from 0.0 to r with n_gridpoints
     solvers::SolverArgs<const Mesh, const solvers::TimeArg> args{
-      .mesh = make_Mesh(linspaced(n_gridpoints,0.0,pi),1),
+      .mesh = Mesh::create(1)->setAxis(0,linspaced(n_gridpoints,0.0,pi)),
       .times = solvers::TimeArg::builder().setStart(0.0).setStop(pi).setNumSteps(m_timesteps).build()
     };
     args.initialConditions = { discretize(args.mesh, [](fornfdm::Scalar x){ return std::sin(x); }) };
@@ -347,7 +361,7 @@ static void fast_implicit_solver_1d(benchmark::State &state)
 
     // uniform mesh from 0.0 to r with n_gridpoints
     solvers::SolverArgs<const Mesh, const solvers::TimeArg> args{
-      .mesh = make_Mesh(linspaced(n_gridpoints,0.0,pi),1),
+      .mesh = Mesh::create(1)->setAxis(0,linspaced(n_gridpoints,0.0,pi)),
       .times = solvers::TimeArg::builder().setStart(0.0).setStop(pi).setNumSteps(m_timesteps).build()
     };
     args.initialConditions = { discretize(args.mesh, [](fornfdm::Scalar x){ return std::sin(x); }) };

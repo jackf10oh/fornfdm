@@ -11,7 +11,9 @@
 #include<array> // std::array
 #include<cassert>
 #include<vector> // std::vector
+#include<new>
 #include<memory> // std::shared_ptr
+#include<memory_resource>
 #include<Eigen/Core> 
 
 #include"types.hpp"
@@ -21,92 +23,146 @@ namespace fornfdm {
 class Mesh : public std::enable_shared_from_this<Mesh>
 {
   private:
-    // member data ----------------------------
-    static constexpr std::size_t numDimsMax = 5; // fixed maximum.
-    typename std::array<fornfdm::Vector, numDimsMax> m_mesh_arr; // fixed size array of 1d axes.
-    const std::size_t m_size; // runtime size that counts how many dims are used. 
+    // Type Defs -----------------------------
+    struct hidden_key{};
+    static constexpr std::size_t kSboCutoff = 3;
+    static constexpr std::uint8_t kIsOnHeapBit = (1u << 7);
+    struct HeapStorage
+    {
+      Axis* pointer;
+      std::size_t size;
+    };
+    union Storage
+    {
+      alignas(Axis) unsigned char bytes[sizeof(Axis)*kSboCutoff];
+      HeapStorage heap_storage;
+    };
 
   public:
-    // Constructors + Destructor =============================================================== 
+    // Constructors + Destructor --------------- 
 
     // from number of axes. stops shared_ptr from initializing to nullptr. 
-    Mesh(std::size_t dims) : m_size(dims){} 
-
-    // forward args to std::array
-    template<typename ArgType>
-    Mesh(const Eigen::MatrixBase<ArgType>& xpr, std::size_t dims=1)
-      : m_size(dims)
+    Mesh(std::size_t ndims, std::pmr::memory_resource* mr, hidden_key key)
     {
-      assert((dims <= numDimsMax) && "Can't construct mesh with given dims"); 
-      for(std::size_t idx=0; idx<m_size; ++idx){
-        m_mesh_arr[idx] = xpr; 
+      if(ndims == 0) throw std::invalid_argument("must pass ndims > 0 to Mesh::create");
+      const bool on_heap = ndims > kSboCutoff;
+      Axis* axes_ptr = on_heap ?
+                        reinterpret_cast<Axis*>(mr->allocate(ndims*sizeof(Axis), alignof(Axis))) :
+                        reinterpret_cast<Axis*>(m_storage.bytes); 
+
+      std::size_t built = 0;
+      try
+      {
+        for(; built<ndims; ++built)
+        {
+          new (static_cast<void*>(axes_ptr+built)) Axis(mr);
+        }
+      }
+      catch(...)
+      {
+        for(std::size_t i=0; i<built; ++i)
+        {
+          axes_ptr[i].~Axis();
+        }
+        if(on_heap) mr->deallocate(axes_ptr, ndims*sizeof(Axis), alignof(Axis));
+        throw;
+      }
+      if(on_heap)
+      {
+        m_storage.heap_storage = HeapStorage{axes_ptr, ndims};
+        m_metadata = kIsOnHeapBit;
+      }
+      else
+      {
+        m_metadata = ndims;
       }
     }
 
-    template<typename... ArgType>
-    Mesh(const Eigen::MatrixBase<ArgType>&... xpr)
-      : m_size(sizeof...(xpr))
+    // static factory method. enforce shared_ptr only
+    static std::shared_ptr<Mesh> create(std::size_t ndims, std::pmr::memory_resource* mr = std::pmr::get_default_resource())
     {
-      static_assert(sizeof...(ArgType) > 0, "Can't construct mesh with 0 dims");
-      std::size_t ith_dim = 0;
-      (
-        (m_mesh_arr[ith_dim++]=xpr),
-        ...
-      ); 
+      return std::make_shared<Mesh>(ndims,mr,hidden_key{});
     }
 
     // Copy 
-    Mesh(const Mesh& other)=default; 
+    Mesh(const Mesh& other)=delete; 
+    Mesh& operator=(const Mesh& other)=delete;
     
     // destructors
-    ~Mesh()=default;
-
-    // Member Functions ===============================================================
-
-    // get list of stored 1d mesh pointers. 
-    auto& getAxesList(){ return m_mesh_arr; } 
-
-    // swap all axes with another mesh 
-    void swap(Mesh& other) noexcept
+    ~Mesh()
     {
-      assert(m_size==other.m_size && "Swapping Mesh with # of Dims != is not allowed."); 
-      for(std::size_t idx=0; idx<m_size; ++idx)
+      const bool on_heap = ((m_metadata & kIsOnHeapBit)!=0);
+
+      Axis* axes_ptr = on_heap ? 
+              m_storage.heap_storage.pointer :
+              std::launder(reinterpret_cast<Axis*>(m_storage.bytes));
+
+      std::pmr::memory_resource* mr = axes_ptr[0].get_allocator().resource();
+
+      std::size_t end = numDims();
+      for(std::size_t i=0; i<end; ++i)
       {
-        m_mesh_arr[idx].swap(other.m_mesh_arr[idx]); 
+        axes_ptr[i].~Axis();
       }
+
+      if(on_heap) mr->deallocate(axes_ptr, end*sizeof(Axis),alignof(Axis));
     }
 
-    // argument dependent lookup for 
-    friend void swap(Mesh& lhs, Mesh& rhs) noexcept { lhs.swap(rhs); }
+    // Member Functions --------------
+
+    std::shared_ptr<Mesh> clone()
+    {
+      const Axis* axes_ptr = get_axes_ptr();
+      std::size_t ndims = numDims();
+      auto result = create(ndims, axes_ptr[0].get_allocator().resource());
+      auto* dest_ptr = result->get_axes_ptr();
+      for(std::size_t i=0; i<ndims; ++i)
+      {
+        dest_ptr[i] = axes_ptr[i];
+      }
+      return result;
+    }
     
     // number of dimensions 
-    std::size_t numDims() const {return m_size; } 
+    std::size_t numDims() const 
+    {
+      const bool on_heap = (m_metadata & kIsOnHeapBit)!=0;
+      return on_heap ? 
+          m_storage.heap_storage.size :
+          m_metadata; 
+    }
 
     // size of a specific axis 
-    std::size_t sizeOfDim(std::size_t i) const {return m_mesh_arr[i].size();} 
+    std::size_t sizeOfDim(std::size_t i) const {assert(i<numDims()); return get_axes_ptr()[i].size();} 
 
     // get a specific axis
-    auto& getAxis(std::size_t i){ return (m_mesh_arr[i]); }
-    const auto& getAxis(std::size_t i) const { return (m_mesh_arr[i]); }
+    auto& getAxis(std::size_t i){ assert(i<numDims()); return get_axes_ptr()[i]; }
+    const auto& getAxis(std::size_t i) const { assert(i<numDims()); return get_axes_ptr()[i]; }
 
-    // get a specific axis
-    auto& getAxisSafe(std::size_t i)
+    // set a specific axis from an eigen expression
+    template<typename Derived>
+    SharedMesh setAxis(std::size_t i, const Eigen::MatrixBase<Derived>& xpr)
     {
-      if(i >= m_size) throw std::runtime_error("error ith_dim out of range. ");  
-      return ( m_mesh_arr.at(i) ); 
-    }
-    const auto& getAxisSafe(std::size_t i) const 
-    {
-      if(i >= m_size) throw std::runtime_error("error ith_dim out of range. ");  
-      return ( m_mesh_arr.at(i) ); 
+      assert(i < numDims());
+      std::size_t sz = xpr.size();
+      Axis* ptr = get_axes_ptr();
+      std::pmr::memory_resource* mr = ptr[0].get_allocator().resource(); 
+      Axis temp{mr};
+      temp.resize(sz);
+      temp.swap(ptr[i]); // no deep copies.
+      Eigen::Map<fornfdm::Vector> view(ptr[i].data(), sz);
+      view = xpr;
+      return shared_from_this();
     }
 
     // full size of XD mesh. i.e. axis1.size() * ... * axisn.size()
     std::size_t sizesProduct() const 
     {
       std::size_t p = 1; 
-      for(auto idx=0; idx<m_size; ++idx){
-        p *= m_mesh_arr[idx].size(); 
+      const auto* axes = get_axes_ptr();
+      std::size_t end = numDims();
+      for(auto idx=0; idx<end; ++idx){
+        p *= axes[idx].size(); 
       }
       return p; 
     } 
@@ -115,45 +171,35 @@ class Mesh : public std::enable_shared_from_this<Mesh>
     std::size_t sizesMiddleProduct(std::size_t start, std::size_t end) const 
     {
       assert((start <= end) && "start index must be <= end index for middle product"); 
-      assert((end <= m_size) && "end index must be <= # of numDims in MeshXD"); 
+      assert((end <= numDims()) && "end index must be <= # of numDims in MeshXD"); 
       std::size_t prod = 1; 
+      const auto* ptr = get_axes_ptr();
       for(auto idx=start; idx<end; ++idx){
-        prod *= m_mesh_arr[idx].size(); 
+        prod *= ptr[idx].size(); 
       }
       return prod; 
     } 
 
-    // From a Vector representing flattened Discretization produce list of views that "look" like 1 dimensional slices 
-    std::vector<fornfdm::StrideView> makeOneDimViews(fornfdm::StrideRef vec, std::size_t ith_dim=0) const 
+  private:
+    Axis* get_axes_ptr()
     {
-      // # of entries in vec must be == to product of mesh1D sizes
-      assert((vec.size() == sizesProduct()) && "DiscretizationXD # of entries must be == to product of sizes in MeshXD"); 
-      // i has to be one of the dimensions of DiscretizationXD 
-      assert((ith_dim < numDims()) && "MeshXD::OneDim_views(i) i must be < MeshXD.numDims().");
+      bool on_heap = ((m_metadata & kIsOnHeapBit)!=0);
+      return on_heap ? 
+            m_storage.heap_storage.pointer :
+            std::launder(reinterpret_cast<Axis*>(m_storage.bytes));
+    }
 
-      std::size_t ith_dim_size = sizeOfDim(ith_dim); 
-      std::size_t num_copies = sizesProduct() / ith_dim_size; 
-      std::size_t mod = sizesMiddleProduct(0, ith_dim); 
-      std::size_t scale = mod * ith_dim_size; 
+    const Axis* get_axes_ptr() const
+    {
+      bool on_heap = ((m_metadata & kIsOnHeapBit)!=0);
+      return on_heap ? 
+            m_storage.heap_storage.pointer :
+            std::launder(reinterpret_cast<const Axis*>(m_storage.bytes));
+    }
 
-      std::vector<fornfdm::StrideView> result; 
-      result.reserve(sizeOfDim(ith_dim)); 
-
-      fornfdm::Stride stride(0,mod); 
-
-      // iterate through the copies 
-      for(std::size_t n=0; n<num_copies; n++)
-      {
-        // offset from start of current copy 
-        std::size_t offset = (mod ? FORNFDM_MODULO(n,mod) : n) + (scale * (n/mod));  
-        // begin data ptr of copy  
-        auto begin = vec.data()+offset;  
-
-        // MemView of current copy 
-        result.emplace_back(begin, ith_dim_size, stride);
-      }
-      return result; 
-    } 
+    // member data ----------------------------
+    Storage m_storage;
+    std::uint8_t m_metadata;
 
 };
 
@@ -195,7 +241,7 @@ template<class Callable>
 auto discretize(std::shared_ptr<const fornfdm::Mesh> mesh, const Callable& func)
 {
   std::size_t s = mesh->sizesProduct(); 
-  static constexpr std::size_t N = fornfdm::internal::callable_traits<Callable>::arity; 
+  constexpr std::size_t N = fornfdm::internal::callable_traits<Callable>::arity; 
   auto lam = [func, m = std::move(mesh)](std::size_t i){ return fornfdm::Coordinate<N>(m.get(), i).apply(func); }; 
   return Eigen::CwiseNullaryOp<decltype(lam), fornfdm::Vector>(s, 1, std::move(lam)); 
 }

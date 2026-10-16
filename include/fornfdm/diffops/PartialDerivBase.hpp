@@ -300,7 +300,7 @@ class PartialDerivBase<Derived, internal::TimeDepLeftKroneckerTag> : public Eige
       // setup hot loop
       using Evaluator = fornfdm::linops::internal::Evaluator<Derived>; 
       Evaluator eval(derived(), t); 
-      const fornfdm::Vector& axis = m_mesh_raw->getAxis(traits_t::direction);
+      const fornfdm::Axis& axis = m_mesh_raw->getAxis(traits_t::direction);
       std::size_t axis_size = m_mesh_raw->sizeOfDim(traits_t::direction); 
 
       if(m_need_col_indices)
