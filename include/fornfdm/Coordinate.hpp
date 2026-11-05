@@ -74,11 +74,11 @@ Coordinate<numDimsMax>::Coordinate(const Mesh* m, std::size_t row_idx)
 {
   if constexpr(numDimsMax > 0){
     std::size_t rolling_product = m->sizeOfDim(0); 
-    values[0] = m->getAxis(0)[row_idx % rolling_product];  
+    values[0] = m->getAxis(0)[FORNFDM_MODULO(row_idx,rolling_product)];  
 
     for(std::size_t ith_dim=1; ith_dim < numDimsMax; ++ith_dim){
       std::size_t s = m->sizeOfDim(ith_dim); 
-      values[ith_dim] = m->getAxis(ith_dim)[(row_idx/rolling_product) % s];  
+      values[ith_dim] = m->getAxis(ith_dim)[FORNFDM_MODULO(FORNFDM_DIVISION(row_idx,rolling_product),s)];  
       rolling_product *= s; 
     }
   }

@@ -36,14 +36,14 @@ class Neumann
     ~Neumann()=default; 
     // Member Funcs ----------------------------------------------
     // change first/last (left/right boundary) row of the fornfdm stencil matrix
-    BoundaryRow getTopRow(fornfdm::Real t, const fornfdm::Vector& axis) const 
+    BoundaryRow getTopRow(fornfdm::Real t, const fornfdm::Axis& axis) const 
     {
       // first order derivative approximation. TODO use 3 node stencil here 
       fornfdm::Scalar h = axis[1] - axis[0];
       return BoundaryRow{{-1.0/h, 1.0/h, 0}, 2};  
     }; 
     
-    BoundaryRow getBottomRow(fornfdm::Real t, const fornfdm::Vector& axis) const 
+    BoundaryRow getBottomRow(fornfdm::Real t, const fornfdm::Axis& axis) const 
     {
       // first order derivative approximation 
       fornfdm::Scalar h = axis[axis.size()-1] - axis[axis.size()-2];  
@@ -51,14 +51,14 @@ class Neumann
     };
 
     // change the first/last (left/right boundary) entry of a vector
-    void setImpSolLeft(fornfdm::Real t, const fornfdm::Vector& mesh, fornfdm::StrideRef sol) const 
+    void setImpSolLeft(fornfdm::Real t, const fornfdm::Axis& mesh, fornfdm::StrideRef sol) const 
     { sol[0] = flux; }
 
-    void setImpSolRight(fornfdm::Real t, const fornfdm::Vector& mesh, fornfdm::StrideRef sol) const 
+    void setImpSolRight(fornfdm::Real t, const fornfdm::Axis& mesh, fornfdm::StrideRef sol) const 
     { sol[sol.size()-1] = flux; }
     
     // change the first/last (left/right boundary) entry of a vector  
-    void setExpSolLeft(fornfdm::Real t, const fornfdm::Vector& mesh, fornfdm::StrideRef sol) const 
+    void setExpSolLeft(fornfdm::Real t, const fornfdm::Axis& mesh, fornfdm::StrideRef sol) const 
     { 
       assert((sol.size()>=3 || mesh.size()>=3) && "Discretization1D or Mesh1D size too small!(must be >= 3)"); 
 
@@ -79,7 +79,7 @@ class Neumann
       sol[0] = target;  
     };
 
-    void setExpSolRight(fornfdm::Real t, const fornfdm::Vector& mesh, fornfdm::StrideRef sol) const 
+    void setExpSolRight(fornfdm::Real t, const fornfdm::Axis& mesh, fornfdm::StrideRef sol) const 
     {
       assert((sol.size()>=3 || mesh.size()>=3) && "Vector or Axis size too small!(must be >= 3)"); 
 

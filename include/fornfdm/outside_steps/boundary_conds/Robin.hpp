@@ -42,26 +42,26 @@ class Robin
 
     // Member Funcs ----------------------------------------------
     // change first/last (left/right boundary) row of the fornfdm stencil matrix
-    BoundaryRow getTopRow(fornfdm::Real t, const fornfdm::Vector& axis) const 
+    BoundaryRow getTopRow(fornfdm::Real t, const fornfdm::Axis& axis) const 
     {
       // first order derivative approximation 
       fornfdm::Scalar h = axis[1] - axis[0];  
       return BoundaryRow{{stiffness + damping*(-1.0/h), damping*(1.0/h), 0},2};
     }; 
-    BoundaryRow getBottomRow(fornfdm::Real t, const fornfdm::Vector& axis) const 
+    BoundaryRow getBottomRow(fornfdm::Real t, const fornfdm::Axis& axis) const 
     {
       // first order derivative approximation 
       fornfdm::Scalar h = axis[1] - axis[0];  
       return BoundaryRow{{damping*(-1.0/h), stiffness + damping*(1.0/h), 0}, 2};
     }; 
 
-    void setImpSolLeft(fornfdm::Real t, const fornfdm::Vector& mesh, fornfdm::StrideRef sol) const 
+    void setImpSolLeft(fornfdm::Real t, const fornfdm::Axis& mesh, fornfdm::StrideRef sol) const 
     {sol[0] = flux;};
-    void setImpSolRight(fornfdm::Real t, const fornfdm::Vector& mesh, fornfdm::StrideRef sol) const 
+    void setImpSolRight(fornfdm::Real t, const fornfdm::Axis& mesh, fornfdm::StrideRef sol) const 
     {sol[sol.size()-1] = flux;};
     
     // change the first/last (left/right boundary) entry of a vector  
-    void setExpSolLeft(fornfdm::Real t, const fornfdm::Vector& axis, fornfdm::StrideRef sol) const 
+    void setExpSolLeft(fornfdm::Real t, const fornfdm::Axis& axis, fornfdm::StrideRef sol) const 
     { 
       // up to 3 nodes, up to 1st order deriv
       fornfdm::utils::FornbergStackCalc<3,1> calc;
@@ -78,7 +78,7 @@ class Robin
       // assign to sol reference
       sol[0] = target;  
     };
-    void setExpSolRight(fornfdm::Real t, const fornfdm::Vector& axis, fornfdm::StrideRef sol) const  
+    void setExpSolRight(fornfdm::Real t, const fornfdm::Axis& axis, fornfdm::StrideRef sol) const  
     {
       // up to 3 nodes, up to 1st order deriv
       fornfdm::utils::FornbergStackCalc<3,1> calc;

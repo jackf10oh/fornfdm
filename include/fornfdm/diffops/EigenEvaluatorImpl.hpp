@@ -46,15 +46,15 @@ struct EigenEvaluatorImpl<Derived, std::enable_if_t<std::is_base_of_v<LeftKronec
     // Constructors ==================================
     InnerIterator(const EigenEvaluatorImpl& eval, Index row_idx)
       : m_row_idx(row_idx), 
-      m_col_offset(eval.m_xpr.getStencil().cols() * (row_idx / eval.m_xpr.getStencil().rows())),
-      m_wrapped_it(eval.m_argImpl, row_idx % eval.m_xpr.getStencil().rows()),  
+      m_col_offset(eval.m_xpr.getStencil().cols() * FORNFDM_DIVISION(row_idx,eval.m_xpr.getStencil().rows())),
+      m_wrapped_it(eval.m_argImpl, FORNFDM_MODULO(row_idx,eval.m_xpr.getStencil().rows())),  
       m_kronImpl(eval)
     {}
     
     InnerIterator(const EigenEvaluatorImpl<linops::PartialDerivBase<Derived>>& eval, Index row_idx)
       : m_row_idx(row_idx), 
-      m_col_offset(eval.m_xpr.getStencil().cols() * (row_idx / eval.m_xpr.getStencil().rows())), // as above...  
-      m_wrapped_it(eval.m_argImpl, row_idx % eval.m_xpr.getStencil().rows()), // as above... 
+      m_col_offset(eval.m_xpr.getStencil().cols() * FORNFDM_DIVISION(row_idx,eval.m_xpr.getStencil().rows())), // as above...  
+      m_wrapped_it(eval.m_argImpl, FORNFDM_MODULO(row_idx,eval.m_xpr.getStencil().rows())), // as above... 
       m_kronImpl(eval)
     {}
 
@@ -125,15 +125,15 @@ struct EigenEvaluatorImpl<Derived, std::enable_if_t<std::is_base_of_v<DoubleKron
     // Constructors ==================================
     InnerIterator(const EigenEvaluatorImpl& eval, Index row_idx)
       : m_row_idx(row_idx), 
-      m_col_offset(eval.m_xpr.getProductBefore() * eval.m_xpr.getStencil().cols() * (row_idx / (eval.m_xpr.getProductBefore() * eval.m_xpr.getStencil().rows())) + row_idx % eval.m_xpr.getProductBefore()), 
-      m_wrapped_it(eval.m_argImpl, (row_idx / eval.m_xpr.getProductBefore()) % eval.m_xpr.getStencil().rows()),
+      m_col_offset(eval.m_xpr.getProductBefore() * eval.m_xpr.getStencil().cols() * FORNFDM_DIVISION(row_idx,(eval.m_xpr.getProductBefore() * eval.m_xpr.getStencil().rows())) + FORNFDM_MODULO(row_idx, eval.m_xpr.getProductBefore())), 
+      m_wrapped_it(eval.m_argImpl, FORNFDM_MODULO(FORNFDM_DIVISION(row_idx,eval.m_xpr.getProductBefore()), eval.m_xpr.getStencil().rows())),
       m_kronImpl(eval)
     {}
     
     InnerIterator(const EigenEvaluatorImpl<linops::PartialDerivBase<Derived>>& eval, Index row_idx)
       : m_row_idx(row_idx), 
-      m_col_offset(eval.m_xpr.getProductBefore() * eval.m_xpr.getStencil().cols() * (row_idx / (eval.m_xpr.getProductBefore() * eval.m_xpr.getStencil().rows())) + row_idx % eval.m_xpr.getProductBefore()), 
-      m_wrapped_it(eval.m_argImpl, (row_idx / eval.m_xpr.getProductBefore()) % eval.m_xpr.getStencil().rows()),
+      m_col_offset(eval.m_xpr.getProductBefore() * eval.m_xpr.getStencil().cols() * FORNFDM_DIVISION(row_idx,(eval.m_xpr.getProductBefore() * eval.m_xpr.getStencil().rows())) + FORNFDM_MODULO(row_idx, eval.m_xpr.getProductBefore())), 
+      m_wrapped_it(eval.m_argImpl, FORNFDM_MODULO(FORNFDM_DIVISION(row_idx,eval.m_xpr.getProductBefore()), eval.m_xpr.getStencil().rows())),
       m_kronImpl(eval)
     {}
 
@@ -211,8 +211,8 @@ struct EigenEvaluatorImpl<
     InnerIterator(const EigenEvaluatorImpl& eval, Index row_idx)
       : m_eval(eval), 
       m_row_idx(row_idx), 
-      m_axis_idx(row_idx % eval.m_xpr.getAxisSize()),
-      m_col_offset(eval.m_xpr.getAxisSize() * (row_idx / eval.m_xpr.getAxisSize())), 
+      m_axis_idx(FORNFDM_MODULO(row_idx, eval.m_xpr.getAxisSize())),
+      m_col_offset(eval.m_xpr.getAxisSize() * FORNFDM_DIVISION(row_idx,eval.m_xpr.getAxisSize())), 
       m_counter(0),
       m_offset(eval.m_xpr.getOutersPtr()[m_axis_idx]),
       m_size(eval.m_xpr.getOutersPtr()[m_axis_idx+1] - m_offset),
@@ -302,8 +302,8 @@ struct EigenEvaluatorImpl<
     InnerIterator(const EigenEvaluatorImpl& eval, Index row_idx)
       : m_eval(eval), 
       m_row_idx(row_idx), 
-      m_axis_idx((row_idx / eval.m_xpr.getProductBefore()) % eval.m_xpr.getAxisSize()),
-      m_col_offset(eval.m_xpr.getProductBefore() * eval.m_xpr.getAxisSize() * (row_idx / (eval.m_xpr.getProductBefore() * eval.m_xpr.getAxisSize())) + row_idx % eval.m_xpr.getProductBefore()), 
+      m_axis_idx(FORNFDM_MODULO(FORNFDM_DIVISION(row_idx,eval.m_xpr.getProductBefore()), eval.m_xpr.getAxisSize())),
+      m_col_offset(eval.m_xpr.getProductBefore() * eval.m_xpr.getAxisSize() * FORNFDM_DIVISION(row_idx,(eval.m_xpr.getProductBefore() * eval.m_xpr.getAxisSize())) + FORNFDM_MODULO(row_idx, eval.m_xpr.getProductBefore())), 
       m_counter(0),
       m_offset(eval.m_xpr.getOutersPtr()[m_axis_idx]),
       m_size(eval.m_xpr.getOutersPtr()[m_axis_idx+1] - m_offset),
@@ -408,8 +408,8 @@ struct EigenEvaluatorImpl<
       : m_eval(eval),
       m_idx(0), 
       m_row_idx(row_index),
-      m_offset(m_eval.m_xpr.m_arg.getStencil().cols() * (m_row_idx / (m_eval.m_xpr.m_arg.getStencil().rows()))),
-      m_row(eval.m_eval, eval.m_mesh.get(), row_index % (m_eval.m_xpr.m_arg.getStencil().rows()), row_index)
+      m_offset(m_eval.m_xpr.m_arg.getStencil().cols() * FORNFDM_DIVISION(m_row_idx,(m_eval.m_xpr.m_arg.getStencil().rows()))),
+      m_row(eval.m_eval, eval.m_mesh.get(), FORNFDM_MODULO(row_index, m_eval.m_xpr.m_arg.getStencil().rows()), row_index)
     {}
     
     // Member Functions --------------
@@ -481,8 +481,8 @@ struct EigenEvaluatorImpl<
       : m_eval(eval),
       m_idx(0), 
       m_row_idx(row_index),
-      m_offset( m_eval.m_prod_before * m_eval.m_stencil_size * (m_row_idx / (m_eval.m_prod_before * m_eval.m_stencil_size)) + (m_row_idx % m_eval.m_prod_before) ),
-      m_row(eval.m_eval, eval.m_mesh.get(), (row_index / m_eval.m_prod_before)%(m_eval.m_stencil_size), row_index)
+      m_offset( m_eval.m_prod_before * m_eval.m_stencil_size * FORNFDM_DIVISION(m_row_idx,(m_eval.m_prod_before * m_eval.m_stencil_size)) + FORNFDM_MODULO(m_row_idx, m_eval.m_prod_before)),
+      m_row(eval.m_eval, eval.m_mesh.get(), FORNFDM_MODULO(FORNFDM_DIVISION(row_index,m_eval.m_prod_before), m_eval.m_stencil_size), row_index)
     {}
     
     // Member Functions --------------

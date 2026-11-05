@@ -36,7 +36,7 @@ target_link_libraries(fornfdm
 )
 
 # adding google test
-option(USE_OPENMP "Configure Cmake to build GTest suite" OFF) 
+option(BUILD_TESTING "Configure Cmake to build GTest suite" OFF) 
 if(BUILD_TESTING OR BUILD_BENCHMARKS)
   enable_testing()
   # find_package(GTest) #find the gtest library  # will fail if not found
@@ -56,8 +56,13 @@ endif()
 
 # adding google benchmark  
 if(BUILD_BENCHMARKS)
-  find_package(benchmark CONFIG)
-  if(benchmark_FOUND)
+  FetchContent_Declare(
+    googlebenchmark
+    GIT_REPOSITORY https://github.com/google/benchmark.git
+    GIT_TAG v1.8.3  # Use a specific tag for reproducibility
+  )
+  FetchContent_MakeAvailable(googlebenchmark)
+  if(TARGET benchmark::benchmark)
     message(STATUS "Google Benchmark found.") #  building benchmarks
     add_subdirectory(benchmarks)
   else()

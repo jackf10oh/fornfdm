@@ -18,7 +18,7 @@ namespace texprs{
 
 // ======================================================
 template<typename Coeff, typename TimeDeriv>
-class CoeffMultExpr : public TimeDerivBase<CoeffMultExpr<Coeff,TimeDeriv>, std::remove_reference_t<std::remove_cv_t<TimeDeriv>>::max_order> 
+class CoeffMultExpr : public TimeDerivBase<CoeffMultExpr<Coeff,TimeDeriv>, std::remove_reference_t<std::remove_cv_t<TimeDeriv>>::maxOrder> 
 {
   public:
     // Type Defs --------------------- 
