@@ -9,7 +9,8 @@
 // #define FORNFDM_USE_BITWISE_OPS
 // #define FORNFDM_CUSTOM_SCALAR float
 #include<fornfdm/plugin.hpp>
-#include<fornfdm/all.hpp>
+#include<fornfdm/diffops/all.hpp>
+#include<fornfdm/coeffs/all.hpp>
 #include<Eigen/Core>
 #include<Eigen/Sparse>
 #include<gtest/gtest.h>

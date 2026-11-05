@@ -1,17 +1,18 @@
-// LhsExecutor.hpp
+// ExecutorBase.hpp
 //
-// class to manage circular buffer of time + solutions 
-// also implements various Eigen expressions using c++17 folds  
+// class to manage circular buffer of time + solutions. 
+// Specialized for each kind of TExpr. 
+//
+// specialization will have to implement getRhsExpression and getInvCoeff. 
 //
 // JAF 1/16/2025 
 
-#ifndef FORNFDM_TEXPRS_EXECUTOR_H
-#define FORNFDM_TEXPRS_EXECUTOR_H
+#ifndef FORNFDM_TEXPRS_EXECUTORBASE_H
+#define FORNFDM_TEXPRS_EXECUTORBASE_H
 
 #include<algorithm>
 #include<array>
 #include<cstdint>
-#include<tuple>
 #include<Eigen/Core>
 #include "../types.hpp" // Scalar, DiagMatrix
 #include "../utilities/fornberg.hpp" // not using stack calc. we need a std::array<Real> not std::array<Scalar> 
@@ -20,31 +21,26 @@
 namespace fornfdm{
   namespace texprs{
 
-// ===============================================================================
-template<typename TimeDeriv, std::size_t M=TimeDeriv::maxOrder+1>
-class Executor
+// specialized according to each expression type.
+// TODO nothing goes to this class on construction? 
+template<typename Derived>
+class ExecutorImpl{};
+
+template<typename TimeDeriv, std::size_t numTimesMin = 0>
+class Executor : public ExecutorImpl<Executor<TimeDeriv, numTimesMin>> 
 {
   public:
     // Type Defs ------------------------------------------- 
-    using Tup = std::remove_cv_t<std::remove_reference_t<decltype(std::declval<TimeDeriv&>().toTuple())>>;
-    using ScalarTup = std::remove_cv_t<std::remove_reference_t<decltype(texprs::traits::filter_tup<texprs::traits::coeffat_returns_real>(std::declval<Tup>()))>>;
-    using MatrixTup = std::remove_cv_t<std::remove_reference_t<decltype(texprs::traits::filter_tup<texprs::traits::coeffat_returns_other>(std::declval<Tup>()))>>;
-    using InvCoeff = std::conditional_t<std::tuple_size<MatrixTup>::value==0, fornfdm::Scalar, fornfdm::DiagMatrix>; 
     using WrappedExpression = TimeDeriv; 
     // number of nodes used in Fornberg algorithm 
-    static constexpr std::size_t numStoredTimes = std::max(M, TimeDeriv::maxOrder+1); 
-    static constexpr std::size_t numStoredSols = numStoredTimes-1; 
+    static constexpr std::size_t numStoredTimes = std::max(numTimesMin, internal::traits<TimeDeriv>::max_order+1); 
+    static constexpr std::size_t numStoredSols = numStoredTimes-1;
 
-  private:
+  protected:
     // Member Data ---------------------------------
+
     // reference to the expression the executor is working on. 
     TimeDeriv& m_wrapped;
-
-    // tuple that stores all entries in expr_init.toTuple() such that .coeffAt(...) returns a fornfdm::Real  
-    ScalarTup m_scalar_coeff_sum_partition;
-
-    // .....  such that .coeffAt(...) returns a Matrix  
-    MatrixTup m_mat_coeff_sum_partition; 
 
     // list of t0, t1, ..., tn 
     std::array<fornfdm::Real, numStoredTimes> m_stored_times; 
@@ -53,32 +49,27 @@ class Executor
     std::array<fornfdm::Vector, numStoredSols> m_stored_sols; 
 
     // forberg weights calculator 
-    std::array<fornfdm::Real, numStoredTimes * (TimeDeriv::maxOrder+1)> m_weights_arr; 
-    
-    // result of buildInvCoeff.   
-    InvCoeff m_inv_coeff; 
+    std::array<fornfdm::Real, numStoredTimes * (internal::traits<TimeDeriv>::max_order+1)> m_weights_arr; 
 
   public:
     // Constructors + Destructor =======================================
+    
     // default 
-    Executor()=delete; 
+    ExecutorBase()=delete; 
 
     // from expressions of Time derivatives
-    Executor(TimeDeriv& expr_init) 
-      : m_wrapped(expr_init),
-      m_scalar_coeff_sum_partition(texprs::traits::filter_tup<texprs::traits::coeffat_returns_real>(m_wrapped.toTuple())), 
-      m_mat_coeff_sum_partition(texprs::traits::filter_tup<texprs::traits::coeffat_returns_other>(m_wrapped.toTuple()))
-    {
-      static_assert(texprs::traits::is_timederiv_crtp<TimeDeriv>::value, "Must construct Executor from TExpr!");
-    }
+    ExecutorBase(TimeDeriv& expr_init) 
+      : m_wrapped(expr_init), m_stored_times(), m_stored_sols(), m_weights_arr()
+    {}
 
     // copy 
-    Executor(const Executor& other)=default; 
+    ExecutorBase(const ExecutorBase& other)=delete;
+    
+    // move
+    ExecutorBase(ExecutorBase&& other)=default; 
 
-    // move 
-    // Executor(Executor&& other)=default; 
     // destructor 
-    ~Executor()=default; 
+    ~ExecutorBase()=default; 
 
     // Member Funcs =======================================
 
@@ -141,6 +132,7 @@ class Executor
     {
       std::rotate(m_stored_sols.begin(), std::next(m_stored_sols.begin(),idx), m_stored_sols.end()); 
     }
+    
     // consume a solution. push back all previous 
     void pushSolution(fornfdm::Vector sol)
     { 
@@ -178,178 +170,14 @@ class Executor
         return start;
       }
     }
-
-    // traverse stored tuples and sets mesh for any LinOps inside 
-    void setMesh(const std::shared_ptr<const fornfdm::Mesh>& m)
-    {
-      std::apply(
-        [&m, this](auto&... args){ ((setMesh_singleton(m, args)), ...); }, 
-        m_scalar_coeff_sum_partition
-      ); 
-      std::apply(
-        [&m, this](auto&... args){ ((setMesh_singleton(m, args)), ...); }, 
-        m_mat_coeff_sum_partition
-      ); 
-    }
-
-    // traverse stored tuples and sets time for any LinOps inside 
-    void setTime(fornfdm::Real t)
-    {
-      std::apply(
-        [t,this](auto&... args){ ((setTime_singleton(t, args)),...); }, 
-        m_scalar_coeff_sum_partition
-      ); 
-      std::apply(
-        [t,this](auto&... args){ ((setTime_singleton(t, args)),...); }, 
-        m_mat_coeff_sum_partition
-      ); 
-    }
-
-    void calculate(fornfdm::Real t){ 
-      fornfdm::utils::fornberg(
-        m_stored_times.cbegin(), m_stored_times.cend(),
-        t,TimeDeriv::maxOrder,
-        m_weights_arr.begin()
-      ); 
-      setTime(t);   
-      buildInvCoeff(); 
-    }
-
-    decltype(auto) getRhsExpression()
-    {
-      return getRhsExpression_impl(std::make_index_sequence<numStoredSols>{}); 
-    }
-
-    // getters to m_inv_coeff + m_rhs_vec 
-    const InvCoeff& getInvCoeff() const { return m_inv_coeff; }
-
-  private:
-    // Unreachable ===========================================     
-    template<std::size_t... idxs>
-    auto getRhsExpression_impl(std::index_sequence<idxs...>)
-    {
-      // assuming all the time derivatives don't have a time dependent CoeffOp, 
-      // we can just use a super fast fold expression. 
-      return (-1.0) * m_inv_coeff * (getRhsExpression_impl_helper<idxs>() + ...); 
-    }
-
-    template<std::size_t ithNode>
-    auto getRhsExpression_impl_helper()
-    {
-      if constexpr(std::tuple_size<MatrixTup>::value == 0){
-        // just scalars need to be added 
-        fornfdm::Real reals_sum = std::apply(
-          [this](auto&&... args){
-            return (args.template coeffAt<ithNode, numStoredTimes>(m_weights_arr) + ...); 
-          }, 
-          m_scalar_coeff_sum_partition
-        ); 
-        // need to flip the coefficient by (-1) so that its moved to rhs 
-        return reals_sum * m_stored_sols[ithNode]; 
-      }
-      else if constexpr(std::tuple_size<ScalarTup>::value == 0){
-        // just matrix return types need to be added
-        decltype(auto) matrix_sum = std::apply(
-          [this](auto&&... args){
-            return (args.template coeffAt<ithNode, numStoredTimes>(m_weights_arr) + ...); 
-          },
-          m_mat_coeff_sum_partition
-        ); 
-        return matrix_sum * m_stored_sols[ithNode]; 
-      }
-      else{
-        // sum of both scalar AND matrix return types! 
-        fornfdm::Real reals_sum = std::apply(
-          [this](auto&&... args){
-            return (args.template coeffAt<ithNode, numStoredTimes>(m_weights_arr) + ...); 
-          }, 
-          m_scalar_coeff_sum_partition
-        );
-        decltype(auto) matrix_sum = std::apply(
-          [this](auto&&... args){
-            return (args.template coeffAt<ithNode, numStoredTimes>(m_weights_arr) + ...); 
-          }, 
-          m_mat_coeff_sum_partition
-        ); 
-        return reals_sum * m_stored_sols[ithNode] + matrix_sum * m_stored_sols[ithNode]; 
-      }
-    }
-
-    // gets 1 / c where c is coeff of U(n+1) in fornfdm equation 
-    void buildInvCoeff()
-    { 
-      if constexpr(std::tuple_size<MatrixTup>::value == 0){
-        // all coeffAt's evaluate to scalar -> return 1 / sum(coeffs) 
-        fornfdm::Scalar s = std::apply(
-            [this](auto&&... coeffs){
-              return (coeffs.template coeffAt<numStoredTimes-1, numStoredTimes>(m_weights_arr) + ...); 
-            }, 
-            m_scalar_coeff_sum_partition
-        );
-        m_inv_coeff = 1.0 / s;  
-      }
-      else if constexpr(std::tuple_size<ScalarTup>::value == 0){
-        // all coeffAt's evaluate to matrix -> return (sum(coeffs)).cwiseInverse 
-        auto expr = std::apply(
-              [this](auto&&... coeffs){
-                return (coeffs.template coeffAt<numStoredTimes-1, numStoredTimes>(m_weights_arr) + ...); 
-              }, 
-              m_mat_coeff_sum_partition 
-        ); 
-        m_inv_coeff = (expr.diagonal().cwiseInverse()).asDiagonal();
-      }
-      else{
-        // otherwise return product of 1/(sum(scalar) + (sum(Mats))
-        fornfdm::Real s = std::apply(
-            [this](auto&&... coeffs){
-              return (coeffs.template coeffAt<numStoredTimes-1, numStoredTimes>(m_weights_arr) + ...); 
-            }, 
-            m_scalar_coeff_sum_partition
-        );
-        auto expr = std::apply(
-              [this](auto&&... coeffs){
-                return (coeffs.template coeffAt<numStoredTimes-1, numStoredTimes>(m_weights_arr) + ...); 
-              }, 
-              m_mat_coeff_sum_partition 
-        ); 
-        // combine repeated s, A along diagonal 
-        m_inv_coeff.diagonal() = (expr.diagonal().array() + s).inverse(); 
-      }
-    }
-
-    // Sets mesh onto a Time Derivative. traverse lhs/rhs of multiply expressions
-    template<typename TimeDerivU>
-    void setMesh_singleton(const std::shared_ptr<const fornfdm::Mesh>& m,TimeDerivU& tderiv)
-    {
-      if constexpr(texprs::traits::is_coeffmult_crtp<TimeDerivU>::value){
-        setMesh_singleton(m, tderiv.getLhs()); 
-        setMesh_singleton(m, tderiv.getRhs()); 
-      }
-      if constexpr(!std::is_arithmetic<TimeDerivU>::value && !texprs::traits::is_timederiv_crtp<TimeDerivU>::value){
-        tderiv.setMesh(m); 
-      }
-    }
-
-    // Sets mesh onto a Time Derivative. traverse lhs/rhs of multiply expressions
-    template<typename TimeDerivU>
-    void setTime_singleton(fornfdm::Real t,TimeDerivU& tderiv)
-    {
-      if constexpr(texprs::traits::is_coeffmult_crtp<TimeDerivU>::value){
-        setTime_singleton(t, tderiv.getLhs()); 
-        setTime_singleton(t, tderiv.getRhs()); 
-      }
-      if constexpr(!std::is_arithmetic<TimeDerivU>::value && !texprs::traits::is_timederiv_crtp<TimeDerivU>::value){
-          tderiv.setTime(t); 
-      }
-    }
-}; 
+};
 
 // entry point for giving specific # of nodes, CTAD time derivate
 template<std::size_t numStoredTimes, typename TimeDeriv>
 auto make_Executor(TimeDeriv& tderiv)
 {
   return Executor<TimeDeriv,numStoredTimes>(tderiv); 
-} 
+}
 
 // entry point  without nodes being specified 
 template<typename TimeDeriv>
@@ -361,4 +189,29 @@ auto make_Executor(TimeDeriv& tderiv)
   } // end namespace texprs 
 } // end namespace fornfdm 
 
-#endif // LhsExecutor.hpp
+#endif // Executor.hpp
+
+/** Ramblings on a new texprs refactor. 
+ * move away from the old tuple based expressions to a traditional binary/unary expressions
+ * 
+ * Consider 3 cases of expressions 
+ *  - all scalars from reading fornberg weights 
+ *  - a couple of AutonomousCoeffs/TimeDepCoeffs left multiplying the TExpr c*Ut 
+ *  - a hairy case where a Diffop multiplies a TExpr? Ux * Ut  
+ * dispatch by a type tag inside of internal::traits
+ * 
+ * Break apart into an evaluator and an executor?
+ * Evaluator class 2 responsibilities. building a RhsExpression and a InvCoeff expression. 
+ * 
+ * simple case. all scalars from reading weights
+ * the rhs expression is just the sum of all weights < T_n 
+ * the inverse coefficient is just the sum(all reads of T_n) ^ -1
+ * 
+ * 2nd case. a couple of AutonomousCoeff / TimeDepCoeff sitting in the expressions 
+ * inverse coefficient has to be some type of diagonal matrix. 
+ * rhs expression is (-1.0) * (expressions setTime) * (sum of all weights < T_n)
+ * 
+ * 3rd case. scary stuff like Uxx * Ut in the expression
+ * inverse coefficient is? some type of dense matrix. potentially a block diagonal? not sure... 
+ * rhs expression is?
+ */

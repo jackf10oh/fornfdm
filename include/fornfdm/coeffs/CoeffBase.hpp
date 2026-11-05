@@ -102,6 +102,18 @@ class CoeffBase: public Eigen::DiagonalBase<Derived>
       m_cyclic_wrapper(0,1,CyclicWrapper(m_diagonal, m_prod_after))
     {} 
 
+    CoeffBase(const CoeffBase& other)
+      : m_diagonal(other.m_diagonal),
+      m_prod_after(other.m_prod_after),
+      m_cyclic_wrapper(m_diagonal.size()*m_prod_after,1,CyclicWrapper(m_diagonal,m_diagonal.size()))
+    {}
+
+    CoeffBase(CoeffBase&& other)
+      : m_diagonal(std::move(other.m_diagonal)),
+      m_prod_after(other.m_prod_after),
+      m_cyclic_wrapper(m_diagonal.size()*m_prod_after,1,CyclicWrapper(m_diagonal,m_diagonal.size()))
+    {}
+
     // Member Functions -------------------
     void setMesh(const std::shared_ptr<const fornfdm::Mesh>& m){ return derived().setMesh(m); }
     auto getMesh() const { return derived().getMesh(); }
@@ -124,6 +136,18 @@ class CoeffBase: public Eigen::DiagonalBase<Derived>
     auto operator*(RhsDeriv&& rhs) && 
     {
       return CoeffProduct<Derived, RhsDeriv>(std::move(derived()), std::forward<RhsDeriv>(rhs)); 
+    }
+    
+  protected:
+    // performs tricky placement new
+    void replace_wrapper()
+    {
+      auto sz = m_diagonal.size();
+      new (&m_cyclic_wrapper) DiagonalVectorType(
+        sz*(m_prod_after),
+        1,
+        CyclicWrapper(m_diagonal, sz)
+      ); 
     }
 };
 

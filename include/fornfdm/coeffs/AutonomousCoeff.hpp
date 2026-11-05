@@ -104,7 +104,7 @@ class AutonomousCoeff : public CoeffBase<AutonomousCoeff<Callable>>
         this->m_diagonal[idx] = coord.apply(m_callable);  
       }
       // placement new shenanigans
-      new (&(this->m_cyclic_wrapper)) typename CoeffBase<AutonomousCoeff<Callable>>::DiagonalVectorType(end*(this->m_prod_after),1,CyclicWrapper(this->m_diagonal, end)); 
+      this->replace_wrapper();
     }
     auto getMesh() const { return m_mesh_observed.lock(); }
     void setTime(fornfdm::Real t){/* do nothing */}

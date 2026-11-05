@@ -144,8 +144,8 @@ class NwiseUnaryOp : public fornfdm::linops::PartialDerivBase<NwiseUnaryOp<Unary
 
   protected:
     // Member data ----------------------------------- 
-    UnaryOp m_functor; 
     XprTypeNested m_xpr; 
+    UnaryOp m_functor; 
   
   public:
     // Constructors ====================== 

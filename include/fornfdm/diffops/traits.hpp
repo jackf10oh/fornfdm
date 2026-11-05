@@ -112,7 +112,7 @@ struct NestedStorage<T, std::void_t<decltype(fornfdm::linops::internal::traits<T
 { 
   using traits_t = typename fornfdm::linops::internal::traits<T>; 
   typedef typename std::conditional<
-    (traits_t::is_linop && !traits_t::is_unarop && !traits_t::is_binop && !traits_t::is_ternop) && (std::is_lvalue_reference<T>::value),
+    (!traits_t::is_unarop && !traits_t::is_binop && !traits_t::is_ternop) && (std::is_lvalue_reference<T>::value),
     T,
     typename std::remove_reference<T>::type
   >::type type; 

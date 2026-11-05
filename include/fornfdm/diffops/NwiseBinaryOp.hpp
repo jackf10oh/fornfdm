@@ -193,9 +193,9 @@ class NwiseBinaryOp : public fornfdm::linops::PartialDerivBase<NwiseBinaryOp<Bin
 
   protected:
     // Member data ----------------------------------- 
-    BinaryOp m_functor; 
     LhsNested m_lhs; 
     RhsNested m_rhs; 
+    BinaryOp m_functor; 
   
   public:
     // Constructors ====================== 

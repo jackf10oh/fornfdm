@@ -13,9 +13,12 @@
 #include "traits.hpp"
 
 namespace fornfdm{
-  namespace texprs{
-  
-// Base Definition =====================================================
+namespace texprs{
+
+// TimeDerivBase. trivially constructable, copyable, destructor
+// each order of time derivative has to have a tuple entry for it coeffcient. 
+// each tuple entry is scaled according to its maximum arity. 
+
 template<typename Derived, std::size_t N>
 class TimeDerivBase
 {

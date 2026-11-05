@@ -111,7 +111,7 @@ class TimeDepCoeff : public CoeffBase<TimeDepCoeff<Callable>>
         this->m_diagonal[idx] = coord.applyBindFirst(m_callable, t);  
       }
       // placement new shenanigans
-      new (&(this->m_cyclic_wrapper)) typename CoeffBase<TimeDepCoeff<Callable>>::DiagonalVectorType(end*(this->m_prod_after),1,CyclicWrapper(this->m_diagonal, end)); 
+      this->replace_wrapper();
     }
     fornfdm::Real getTime() const { return m_current_time; }
 };
