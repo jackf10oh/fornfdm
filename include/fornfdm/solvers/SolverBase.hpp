@@ -30,7 +30,7 @@ class SolverBase
     static constexpr std::size_t numIcsMin = LhsType::maxOrder;  
   
   protected:
-    LhsType& m_lhs; // expression of time derivatives 
+    const LhsType& m_lhs; // expression of time derivatives 
     RhsType& m_rhs; // expression of spatial derivatives 
     using TupleCleaned = typename std::remove_reference<OStepTup>::type; 
     TupleCleaned m_osteps; // std::tuple<> of outside steps 
@@ -40,7 +40,7 @@ class SolverBase
 
     SolverBase()=delete; 
 
-    SolverBase(LhsType& l_init, RhsType& r_init, OStepTup ostep_init)
+    SolverBase(const LhsType& l_init, RhsType& r_init, OStepTup ostep_init)
       : m_lhs(l_init), m_rhs(r_init), m_osteps(std::move(ostep_init))
     {}
 

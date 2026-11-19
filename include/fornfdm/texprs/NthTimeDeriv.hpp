@@ -50,24 +50,27 @@ class NthTimeDeriv : public TExprBase<NthTimeDeriv<N>>
 }; 
 
 template<std::size_t Ith, typename Q, std::size_t N>
-inline auto coeff(const Q& queue, const NthTimeDeriv<N>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+inline auto coeff(const Q& queue, const NthTimeDeriv<N>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
-  return queue.getWeights()[N * queue.numStoredTimes + Ith];
+  return queue.getWeights()[N * queue.numTimes + Ith];
+}
+
+template<typename Q, std::size_t N, std::size_t... Idxs>
+inline auto rhsTerm_impl(const Q& queue, const NthTimeDeriv<N>& xpr, const fornfdm::Mesh* m, fornfdm::Real t, std::index_sequence<Idxs...>)
+{
+  return ((coeff<Idxs>(queue, xpr, m, t) * queue.getSolutions()[Idxs]) + ...);
 }
 
 template<typename Q, std::size_t N>
-inline auto rhsTerm(const Q& queue, const NthTimeDeriv<N>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+inline auto rhsTerm(const Q& queue, const NthTimeDeriv<N>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
-  auto lam = [&queue, &xpr,&m,t](auto... Idxs)
-  {
-    return ((coeff<Idxs>(queue,xpr,m,t) * queue.getStoredSolutions()[Idxs]) + ...);
-  }(std::make_index_sequence<queue.numStoredTimes-1>{});
+  return rhsTerm_impl(queue, xpr, m, t, std::make_index_sequence<queue.numTimes-1>{});
 }
 
 template<typename Q, std::size_t N>
-inline auto inverseCoeff(const Q& queue, const NthTimeDeriv<N>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+inline auto inverseCoeff(const Q& queue, const NthTimeDeriv<N>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
-  return ( fornfdm::Real(1.0) / coeff<queue.numStoredTimes-1>(queue, xpr, m, t) );
+  return ( fornfdm::Real(1.0) / coeff<queue.numTimes-1>(queue, xpr, m, t) );
 }
 
 } // end namespace texprs 

@@ -8,13 +8,15 @@
 #ifndef FORNFDM_SOLVERS_CRANKNICOLSONSOLVER_H
 #define FORNFDM_SOLVERS_CRANKNICOLSONSOLVER_H
 
+#include<iostream> // TODO remove me
+
 #include<cstdint>
 #include<Eigen/Core>
 #include<Eigen/SparseCore>
 #include<Eigen/IterativeLinearSolvers> // BiCGSTAB sparse iterative solver 
 #include "../diffops/traits.hpp" // check RHS is_timedep 
 #include "../texprs/traits.hpp" // check LHS is time derivatives 
-#include "../texprs/Executor.hpp" // marches through time 
+#include "../texprs/Queue.hpp"
 #include "../outside_steps/StepContexts.hpp"  // feed to outside steps tuple 
 #include "../outside_steps/OStepBase.hpp" // StepType scoped enumeration 
 #include "../utilities/Identity.hpp"
@@ -47,7 +49,7 @@ class CrankNicolsonSolver : public SolverBase<CrankNicolsonSolver<LhsType, RhsTy
     CrankNicolsonSolver()=delete; 
 
     CrankNicolsonSolver(
-      LhsType& l_init, 
+      const LhsType& l_init, 
       RhsType& r_init, 
       OStepTup ostep_init, 
       std::unique_ptr<SparseIterativeSolver> s_init = std::make_unique<SparseIterativeSolver>()
@@ -78,10 +80,11 @@ class CrankNicolsonSolver : public SolverBase<CrankNicolsonSolver<LhsType, RhsTy
       auto time_ctx = fornfdm::osteps::make_time(*it, 0.0, std::move(args.times));
       ++it; 
 
-      // setup executor 
-      auto executor = fornfdm::texprs::make_Executor(this->m_lhs); 
-      executor.pushTimeRange(time_ctx.container->cbegin(), it); 
-      auto sol_end = executor.pushSolutionRange(args.initialConditions.begin(), args.initialConditions.end()); 
+      // setup queue
+      constexpr std::size_t m = fornfdm::texprs::internal::traits<LhsType>::max_order;
+      fornfdm::texprs::Queue<m+1,m> queue;
+      queue.pushTimeRange(time_ctx.container->cbegin(), it); 
+      auto sol_end = queue.pushSolutionRange(args.initialConditions.begin(), args.initialConditions.end()); 
       for(auto sol_it=args.initialConditions.begin(); sol_it != sol_end; ++sol_it)
       {
         // Eventually want save policies to take by (solution, time) 
@@ -90,10 +93,9 @@ class CrankNicolsonSolver : public SolverBase<CrankNicolsonSolver<LhsType, RhsTy
 
       // set up operators. 
       this->m_rhs.setMesh(args.mesh); 
-      executor.setMesh(args.mesh); 
 
       // set up context 
-      auto ctx = fornfdm::osteps::make_context(std::move(args.mesh), &executor, &(this->m_rhs), this); 
+      auto ctx = fornfdm::osteps::make_context(std::move(args.mesh), &(this->m_lhs), &(this->m_rhs), &queue, this); 
 
       // store allocated memory between steps in solver hot loop  
       fornfdm::CSRMatrix stencil; 
@@ -109,24 +111,29 @@ class CrankNicolsonSolver : public SolverBase<CrankNicolsonSolver<LhsType, RhsTy
       for(; it!= end; ++it)
       { 
         time_ctx.next = *it; 
-
         // again using left side of [t(n), t(n+1)] time step 
-        executor.pushTime(time_ctx.next); 
-        executor.calculate(0.5 * (time_ctx.now + time_ctx.next)); 
+        queue.pushTime(time_ctx.next); 
+        fornfdm::Real midpoint = 0.5 * (time_ctx.now + time_ctx.next);
+        queue.calculateWeights(midpoint); 
 
         // outside steps before any type of linear algebra is performed... 
         this->template tupleBeforeLinAlgebra<fornfdm::osteps::StepType::Implicit>(time_ctx,ctx);
 
-        // store the expression into a vector 
-        rhs_vector = (executor.getInvCoeff() * (linop_untouched * executor.getCurrentSolution())) + executor.getRhsExpression(); 
+        // store the expression into a vector
+        auto c = fornfdm::texprs::inverseCoeff(queue, this->m_lhs, ctx.getMesh(), midpoint); 
+        rhs_vector = c * (linop_untouched * queue.getCurrentSolution() - fornfdm::texprs::rhsTerm(queue, this->m_lhs, ctx.getMesh(), midpoint)); 
 
         // outside steps vector before step 
         this->template tupleApplyBeforeVec<fornfdm::osteps::StepType::Implicit>(rhs_vector, time_ctx, ctx);  
         
         // store the matrix into stencil 
-        linop_untouched = 0.5 * (this->m_rhs.evalTime(time_ctx.next)); 
+        if constexpr(fornfdm::linops::internal::traits<RhsType>::is_timedep)
+        {
+          this->m_rhs.setTime(time_ctx.next);
+        }
+        linop_untouched = 0.5 * (this->m_rhs.toEigen()); 
         std::size_t s = linop_untouched.rows(); 
-        stencil = fornfdm::utils::Identity(s,s) - executor.getInvCoeff() * linop_untouched; 
+        stencil = fornfdm::utils::Identity(s,s) - c * linop_untouched; 
         
         // outside steps matrix before step
         this->template tupleApplyBeforeMat<fornfdm::osteps::StepType::Implicit>(stencil, time_ctx, ctx); 
@@ -139,26 +146,23 @@ class CrankNicolsonSolver : public SolverBase<CrankNicolsonSolver<LhsType, RhsTy
         this->template tupleApplyAfterVec<fornfdm::osteps::StepType::Implicit>(solution_u, time_ctx, ctx); 
 
         // save oldest solution before it goes 
-        save_policy.saveSolution(executor.getExpiringSolution()); 
+        save_policy.saveSolution(queue.getExpiringSolution()); 
 
-        // push solution into executor
-        executor.rotateStoredSolutions(1); 
-        executor.getStoredSolutions().back().swap(solution_u); 
+        // push solution into queue
+        queue.rotateSolutions(1); 
+        queue.getSolutions().back().swap(solution_u); 
 
         // advance time_ctx 1 step in time 
         time_ctx.now = time_ctx.next; 
       }        
       // Give remaining solutions to save_policy 
-      for(auto i=0; i < executor.numStoredSols-1; ++i) save_policy.saveSolution( std::move(executor.getStoredSolutions()[i])); 
+      for(auto i=0; i < queue.numSolutions-1; ++i) save_policy.saveSolution( std::move(queue.getSolutions()[i])); 
 
       // save_policy also determines return type / how to handle last solution
-      return save_policy.saveLastSolution(std::move( executor.getCurrentSolution() )); 
+      return save_policy.saveLastSolution(std::move( queue.getCurrentSolution() )); 
     } 
   
-}; 
-
-template<typename L, typename R, typename O, class S=Eigen::BiCGSTAB<fornfdm::CSRMatrix>>
-using CNSolver = CrankNicolsonSolver<L,R,O,S>; 
+};
 
   } // end namespace solvers
 } // end namespace fornfdm 

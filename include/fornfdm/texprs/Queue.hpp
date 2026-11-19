@@ -28,20 +28,20 @@ class Queue
     // Type Defs ------------------------------------------- 
     // number of nodes used in Fornberg algorithm 
     static_assert(numTimesMin >= maxOrd+1, "must supply max order + 1 times for fornberg algorithm");
-    static constexpr std::size_t numStoredTimes = numTimesMin; 
-    static constexpr std::size_t numStoredSols = numStoredTimes-1;
+    static constexpr std::size_t numTimes = numTimesMin; 
+    static constexpr std::size_t numSolutions = numTimes-1;
     static constexpr std::size_t maxOrder = maxOrd;
   protected:
     // Member Data ---------------------------------
 
     // list of t0, t1, ..., tn 
-    std::array<fornfdm::Real, numStoredTimes> m_stored_times; 
+    std::array<fornfdm::Real, numTimes> m_stored_times; 
 
     // list of solutions u0, u1, ..., un-1 at times t0, t1, ..., tn-1 
-    std::array<fornfdm::Vector, numStoredSols> m_stored_sols; 
+    std::array<fornfdm::Vector, numSolutions> m_stored_sols; 
 
     // forberg weights calculator 
-    std::array<fornfdm::Real, numStoredTimes * (maxOrder+1)> m_weights_arr; 
+    std::array<fornfdm::Real, numTimes * (maxOrder+1)> m_weights_arr; 
 
   public:
     // Constructors + Destructor 
@@ -93,12 +93,12 @@ class Queue
     template<typename Iter>
     Iter pushTimeRange(Iter start, Iter end){ 
       std::size_t d = std::distance(start,end);        
-      if(d >= numStoredTimes) 
+      if(d >= numTimes) 
       {
-        // throw std::runtime_error("Queue setStoredTimes(it,it) error: distance(start,end) > numStoredTimes");
+        // throw std::runtime_error("Queue setStoredTimes(it,it) error: distance(start,end) > numTimes");
         // only copy from rightmost times 
-        // std::copy(std::next(m_stored_times.begin(),d-numStoredTimes), m_stored_times.end(), m_stored_times.begin()); 
-        auto it = std::next(start, d - numStoredTimes); 
+        // std::copy(std::next(m_stored_times.begin(),d-numTimes), m_stored_times.end(), m_stored_times.begin()); 
+        auto it = std::next(start, d - numTimes); 
         std::copy(it,end,m_stored_times.begin()); 
         return it; 
       } 
@@ -106,7 +106,7 @@ class Queue
       {
         // only copy into rightmost times 
         std::copy(std::next(m_stored_times.begin(),d), m_stored_times.end(), m_stored_times.begin()); 
-        std::copy(start,end,std::next(m_stored_times.begin(),numStoredTimes-d)); 
+        std::copy(start,end,std::next(m_stored_times.begin(),numTimes-d)); 
         return start; 
       }
     }
@@ -122,7 +122,7 @@ class Queue
     { 
       /* same idea as pushTime(). with move semantics*/
       std::move(std::next(m_stored_sols.begin()), m_stored_sols.end(), m_stored_sols.begin()); 
-      m_stored_sols[numStoredSols-1] = std::move(sol); 
+      m_stored_sols[numSolutions-1] = std::move(sol); 
     }
 
     // ConsumeSolution but copies full list into m_stored_sols. returns iterator such that [start, iterator) isn't pushed into times.
@@ -130,16 +130,16 @@ class Queue
     Iter pushSolutionRange(Iter start, Iter end)
     {
       std::size_t d = std::distance(start,end); 
-      if(d >= numStoredSols) 
+      if(d >= numSolutions) 
       {
-        // move [start+d-numStoredSols,end) to last entries of m_stored_sols
-        auto it = std::next(start, d - numStoredSols); 
+        // move [start+d-numSolutions,end) to last entries of m_stored_sols
+        auto it = std::next(start, d - numSolutions); 
         std::move(it, end, m_stored_sols.begin());
         return it; 
       }
       else
       {
-        // push numStoredSols - d solutions to front of m_stored_sols
+        // push numSolutions - d solutions to front of m_stored_sols
         std::move( 
             std::prev(m_stored_sols.end(), d),
             m_stored_sols.end(),
@@ -149,7 +149,7 @@ class Queue
         std::move(
             start,
             end,
-            std::next(m_stored_sols.begin(), numStoredSols - d)
+            std::next(m_stored_sols.begin(), numSolutions - d)
         ); 
         return start;
       }

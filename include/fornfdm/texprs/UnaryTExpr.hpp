@@ -96,7 +96,7 @@ auto operator*(C&& c, XprType&& xpr)
 }
 
 template<std::size_t Ith, typename Q, typename UnaryOp, typename XprType>
-inline auto coeff(const Q& queue, const UnaryTExpr<UnaryOp,XprType>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+inline auto coeff(const Q& queue, const UnaryTExpr<UnaryOp,XprType>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
   auto c = coeff<Ith>(queue, xpr.nestedExpression(), m, t);
   if constexpr(internal::traits<XprType>::max_arity == 0)
@@ -112,7 +112,7 @@ inline auto coeff(const Q& queue, const UnaryTExpr<UnaryOp,XprType>& xpr, const 
 }
 
 template<typename Q, typename UnaryOp, typename XprType>
-inline auto rhsTerm(const Q& queue, const UnaryTExpr<UnaryOp,XprType>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+inline auto rhsTerm(const Q& queue, const UnaryTExpr<UnaryOp,XprType>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
   // since UnaryTExpr simply multiplies weights/coeffs linearl by scalar,
   // safe to pull out the operation onto the large RHS expression.
@@ -120,9 +120,9 @@ inline auto rhsTerm(const Q& queue, const UnaryTExpr<UnaryOp,XprType>& xpr, cons
 }
 
 template<typename Q, typename UnaryOp, typename XprType>
-inline auto inverseCoeff(const Q& queue, const UnaryTExpr<UnaryOp,XprType>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+inline auto inverseCoeff(const Q& queue, const UnaryTExpr<UnaryOp,XprType>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
-  auto c = coeff<queue.numStoredTimes - 1>(queue, xpr, m, t);
+  auto c = coeff<queue.numTimes - 1>(queue, xpr, m, t);
   if constexpr(internal::traits<XprType>::max_arity == 0)
   {
     // c is a Real number. 
@@ -132,7 +132,7 @@ inline auto inverseCoeff(const Q& queue, const UnaryTExpr<UnaryOp,XprType>& xpr,
   {
     // c is a lambda accepting Coordinate<N> as input 
     // turn it into an eigen expression
-    auto f = [c, &m](std::size_t idx)
+    auto f = [c, m](std::size_t idx)
     {
       return (fornfdm::Real(1.0) / c(fornfdm::Coordinate<internal::traits<XprType>::max_arity>(m, idx))); 
     };

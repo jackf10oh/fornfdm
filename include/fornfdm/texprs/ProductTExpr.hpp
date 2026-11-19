@@ -138,7 +138,7 @@ auto coeff(const Q& queue, const ProductTExpr<LeftCoeff,RightTExpr>& xpr, const 
 }
 
 template<typename Q, typename LeftCoeff, typename RightTExpr>
-auto rhsTerm(const Q& queue, const ProductTExpr<LeftCoeff,RightTExpr>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+auto rhsTerm(const Q& queue, const ProductTExpr<LeftCoeff,RightTExpr>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
   using lhs_traits_t = fornfdm::linops::internal::traits<LeftCoeff>;
   if constexpr(lhs_traits_t::max_arity == 0)
@@ -154,7 +154,7 @@ auto rhsTerm(const Q& queue, const ProductTExpr<LeftCoeff,RightTExpr>& xpr, cons
   }
   else
   {
-    auto lam_func = [&g = xpr.lhs().callable(), t, &m](std::size_t idx)
+    auto lam_func = [&g = xpr.lhs().callable(), t, m](std::size_t idx)
     {
       fornfdm::Coordinate<lhs_traits_t::max_arity> coord(m,idx);
       if constexpr(lhs_traits_t::is_timedep)
@@ -174,9 +174,9 @@ auto rhsTerm(const Q& queue, const ProductTExpr<LeftCoeff,RightTExpr>& xpr, cons
 }
 
 template<typename Q, typename LeftCoeff, typename RightTExpr>
-auto inverseCoeff(const Q& queue, const ProductTExpr<LeftCoeff,RightTExpr>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+auto inverseCoeff(const Q& queue, const ProductTExpr<LeftCoeff,RightTExpr>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
-  auto c = coeff<queue.numStoredTimes-1>(queue,xpr,m,t);
+  auto c = coeff<queue.numTimes-1>(queue,xpr,m,t);
   constexpr std::size_t necessary_arity = internal::traits<ProductTExpr<LeftCoeff,RightTExpr>>::max_arity; 
   if constexpr(necessary_arity == 0)
   {
@@ -184,7 +184,7 @@ auto inverseCoeff(const Q& queue, const ProductTExpr<LeftCoeff,RightTExpr>& xpr,
   }
   else
   {
-    auto f = [c, &m](std::size_t i)
+    auto f = [c, m](std::size_t i)
     { 
       return (fornfdm::Real(1.0) / c(fornfdm::Coordinate<necessary_arity>(m, i))); 
     };

@@ -11,6 +11,7 @@
 #include<cassert>
 #include<memory>
 #include<vector>
+#include<memory_resource>
 #include<Eigen/Core> 
 #include "../types.hpp"
 #include "../Mesh.hpp"
@@ -31,12 +32,12 @@ struct SolverArgs
   // ! has to be atleast >= max_order + 1. 
   // where max_order is the highest order in the LHS time derivatives expression (texprs)  
   // defaulted to empty so it can be assigned later... 
-  std::vector<fornfdm::Vector> initialConditions = {};
+  std::pmr::vector<fornfdm::Vector> initialConditions = {};
 };
 
 // CTAD guideline ... 
 template<class M, class C>
-SolverArgs(std::shared_ptr<M>, std::shared_ptr<const C>, std::vector<fornfdm::Vector>)
+SolverArgs(std::shared_ptr<M>, std::shared_ptr<const C>, std::pmr::vector<fornfdm::Vector>)
   ->SolverArgs<M, C>; 
 
 template<class M, class C>

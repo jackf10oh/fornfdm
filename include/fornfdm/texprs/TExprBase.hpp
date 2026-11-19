@@ -52,20 +52,20 @@ class TExprBase
 
 // retrieve the fornberg fdm weight at a index
 template<std::size_t Ith, typename Q, typename Derived>
-inline auto coeff(const Q& queue, const TExprBase<Derived>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+inline auto coeff(const Q& queue, const TExprBase<Derived>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
   return coeff<Ith>(queue, xpr.derived(), m, t); 
 }
 
 // combine a*U(n-1)+...+ c*U(n) so that U(n+1) can be solved for
 template<typename Q, typename Derived>
-inline auto rhsTerm(const Q& queue, const TExprBase<Derived>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+inline auto rhsTerm(const Q& queue, const TExprBase<Derived>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
   rhsTerm(queue, xpr.derived(), m, t);
 }
 
 template<typename Q, typename Derived>
-inline auto inverseCoeff(const Q& queue, const TExprBase<Derived>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+inline auto inverseCoeff(const Q& queue, const TExprBase<Derived>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
   return inverseCoeff(queue, xpr.derived(), m, t);
 }

@@ -8,41 +8,65 @@
 
 #include<iostream>
 #include<iomanip>
-#include<fornfdm/texprs/NthTimeDeriv.hpp>
-#include<fornfdm/texprs/UnaryTExpr.hpp>
-#include<fornfdm/texprs/BinaryTExpr.hpp>
+#include<fornfdm/plugin.hpp> // defines EIGEN_SPARSEMATRIXBASE_PLUGIN macro
+#include<fornfdm/all.hpp> // plugin macro takes effect
+#include<fornfdm/utilities/print.hpp>
 #include<Eigen/SparseCore>
 
 using namespace fornfdm; 
 
 using std::endl, std::cout; 
 
-template<typename... Ts>
-void tup_print(std::tuple<Ts...> tup)
-{
-  std::apply(
-    [](auto&&... elem){ ((std::cout << typeid(decltype(elem)).name() << "\n"), ...); },
-    tup
-  );
-}
-
 int main()
 {
   // IO manip
-  std::cout << "hello world!\n"; 
+  std::cout << std::setprecision(3); 
 
-  auto xpr = texprs::NthTimeDeriv<1>{} + 4.0 * texprs::NthTimeDeriv<2>{} + texprs::NthTimeDeriv<3>{} - texprs::NthTimeDeriv<4>{}; 
+  // Domain + Times  
+  fornfdm::solvers::SolverArgs args{
+    /*.mesh=*/ Mesh::create(1)->setAxis(0,fornfdm::linspaced(20,0.0,3.14159)), 
+    /*.times=*/ std::make_shared<const fornfdm::RealVector>(fornfdm::linspaced(100,0.0,0.5))
+  }; 
 
-  auto summation = xpr.makeSummationTerms();
+  // Initial Conditions  
+  auto v = fornfdm::discretize(args.mesh, [](double x){ return std::sin(x); }); 
+  args.initialConditions = { v }; 
 
-  // tup_print(std::make_tuple(xpr));
-  tup_print(summation);
-  std::cout << "-----------\n\n";
+  // LHS in time 
+  auto Ut = texprs::NthTimeDeriv<1>{}; 
 
-  auto left_mess = texprs::NthTimeDeriv<1>{} + 4.0 * texprs::NthTimeDeriv<2>{};
-  auto right_mess = -texprs::NthTimeDeriv<3>{} + texprs::NthTimeDeriv<4>{};
+  // RHS in space 
+  auto Uxx = linops::NthPartialDeriv<2,0,fornfdm::linops::Centered<5>>{}; 
 
-  auto gross = -(left_mess + right_mess) + 2.0 * right_mess;
-  auto tup_gross = gross.makeSummationTerms();
-  tup_print(tup_gross);
+  // Boundary Conditions 
+  osteps::Dirichlet left(0.0), right(0.0); 
+  osteps::BCPair bcs(left,right); 
+
+  // Solving ...
+  // solvers::ExplicitSolver my_solver(Ut,Uxx,std::tie(bcs)); 
+  // solvers::ImplicitSolver my_solver(Utt,expr,std::tie(forcing, bcs)); 
+  solvers::CrankNicolsonSolver my_solver(Ut,Uxx,std::tie(bcs)); 
+
+  // 1D through time 
+  my_solver.calculate(args, solvers::PrintSaver{}); 
+
+  // 1D Print 
+  // auto sol = my_solver.calculate(args, solvers::LastSaver{}); 
+  // utils::print_vec(args.initialConditions[0],"Initial"); 
+  // utils::print_vec(sol, "Sol"); 
+
+  // 2D print 
+  // auto sol = my_solver.calculate(args, solvers::LastSaver{}); 
+  // utils::print_mat(args.mesh->makeOneDimViews(args.initialConditions[0], 0), "Init"); 
+  // utils::print_mat(args.mesh->makeOneDimViews(sol, 0), "solution"); 
+ 
+  // Time to last sol
+  // auto time_taken = my_solver.calculate(args, solvers::TimerSaver{}); 
+  // cout << "milliseconds: " << time_taken.count() << endl;  
+
+  // Average time to last sol
+  // std::size_t N = 40; 
+  // double sum = 0; 
+  // for(auto i=0; i<N; ++i) sum += my_solver.calculate(args, solvers::TimerSaver{}).count(); 
+  // cout << "Average time: " << (sum/N) << " ms" << endl; 
 };

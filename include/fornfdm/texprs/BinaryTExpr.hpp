@@ -129,7 +129,7 @@ inline auto TExprBase<Derived>::operator-(Rhs&& rhs) &&
 }
 
 template<std::size_t Ith, typename Q, typename BinaryOp, typename LhsType, typename RhsType>
-auto coeff(const Q& queue, const BinaryTExpr<BinaryOp,LhsType,RhsType>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+auto coeff(const Q& queue, const BinaryTExpr<BinaryOp,LhsType,RhsType>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
   constexpr bool lhs_is_scalar = internal::traits<LhsType>::max_arity == 0;
   constexpr bool rhs_is_scalar = internal::traits<RhsType>::max_arity == 0;
@@ -165,7 +165,7 @@ auto coeff(const Q& queue, const BinaryTExpr<BinaryOp,LhsType,RhsType>& xpr, con
 }
 
 template<typename Q, typename BinaryOp, typename LhsType, typename RhsType>
-auto rhsTerm(const Q& queue, const BinaryTExpr<BinaryOp,LhsType,RhsType>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+auto rhsTerm(const Q& queue, const BinaryTExpr<BinaryOp,LhsType,RhsType>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
   // since BinaryTExpr simply adds/subtracts weights/coeffs,
   // safe to pull out the operation onto the large RHS expression.
@@ -176,9 +176,9 @@ auto rhsTerm(const Q& queue, const BinaryTExpr<BinaryOp,LhsType,RhsType>& xpr, c
 }
 
 template<typename Q, typename BinaryOp, typename LhsType, typename RhsType>
-auto inverseCoeff(const Q& queue, const BinaryTExpr<BinaryOp,LhsType,RhsType>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+auto inverseCoeff(const Q& queue, const BinaryTExpr<BinaryOp,LhsType,RhsType>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
-  auto c = coeff<queue.numStoredTimes-1>(queue,xpr,m,t);
+  auto c = coeff<queue.numTimes-1>(queue,xpr,m,t);
   constexpr std::size_t necessary_arity = internal::traits<BinaryTExpr<BinaryOp,LhsType,RhsType>>::max_arity; 
   if constexpr(necessary_arity == 0)
   {
@@ -186,7 +186,7 @@ auto inverseCoeff(const Q& queue, const BinaryTExpr<BinaryOp,LhsType,RhsType>& x
   }
   else
   {
-    auto f = [c, &m](std::size_t i)
+    auto f = [c, m](std::size_t i)
     { 
       return (fornfdm::Real(1.0) / c(fornfdm::Coordinate<necessary_arity>(m, i))); 
     };
