@@ -46,4 +46,6 @@ using StrideView =  Eigen::Map<fornfdm::Vector, Eigen::Unaligned, Stride>;
 
 } // end namespace fornfdm 
 
+#include "Mesh.hpp"
+
 #endif // types.hpp 

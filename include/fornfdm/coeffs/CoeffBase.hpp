@@ -18,11 +18,21 @@
 #include "../diffops/functors.hpp"
 #include "../Mesh.hpp"
 #include "../Coordinate.hpp"
+#include "../texprs/traits.hpp"
+#include "../texprs/ProductTExpr.hpp"
 
 namespace fornfdm{
+
+namespace texprs{
+
+// forward declarations
+template<typename LeftCoeff, typename RightTExpr>
+class ProductTExpr;
+
+} // end namespace texprs
+
 namespace linops{
 
-// forward declaration 
 template<class Derived>
 class CoeffBase; 
 
@@ -126,18 +136,40 @@ class CoeffBase: public Eigen::DiagonalBase<Derived>
     const fornfdm::Vector& getVector(){ return m_diagonal; }
 
     // Operators ------------
-    template<class RhsDeriv, typename = std::enable_if_t<linops::internal::is_partialderiv_crtp<RhsDeriv>::value>>
+    template<class RhsDeriv>
     auto operator*(RhsDeriv&& rhs) & 
     {
-      return CoeffProduct<Derived&, RhsDeriv>(derived(), std::forward<RhsDeriv>(rhs)); 
+      if constexpr(linops::internal::is_partialderiv_crtp<RhsDeriv>::value)
+      {
+        return CoeffProduct<Derived&, RhsDeriv>(derived(), std::forward<RhsDeriv>(rhs)); 
+      }
+      else if constexpr(texprs::internal::is_texpr_crtp<RhsDeriv>::value)
+      {
+        return fornfdm::texprs::ProductTExpr<Derived&, RhsDeriv>(derived(), std::forward<RhsDeriv>(rhs));        
+      }
+      else
+      {
+        return Eigen::DiagonalBase<Derived>::operator*(std::forward<RhsDeriv>(rhs));
+      }
     } 
 
-    template<class RhsDeriv, typename = std::enable_if_t<linops::internal::is_partialderiv_crtp<RhsDeriv>::value>>
+    template<class RhsDeriv>
     auto operator*(RhsDeriv&& rhs) && 
     {
-      return CoeffProduct<Derived, RhsDeriv>(std::move(derived()), std::forward<RhsDeriv>(rhs)); 
+      if constexpr(linops::internal::is_partialderiv_crtp<RhsDeriv>::value)
+      {
+        return CoeffProduct<Derived, RhsDeriv>(std::move(derived()), std::forward<RhsDeriv>(rhs)); 
+      }
+      else if constexpr(texprs::internal::is_texpr_crtp<RhsDeriv>::value)
+      {
+        return fornfdm::texprs::ProductTExpr<Derived, RhsDeriv>(std::move(derived()), std::forward<RhsDeriv>(rhs));        
+      }
+      else
+      {
+        return Eigen::DiagonalBase<Derived>::operator*(std::forward<RhsDeriv>(rhs));
+      }
     }
-    
+
   protected:
     // performs tricky placement new
     void replace_wrapper()

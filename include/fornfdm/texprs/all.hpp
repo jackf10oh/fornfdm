@@ -8,15 +8,11 @@
 #define FORNFDM_TEXPRS_ALL_H
 
 #include "traits.hpp"
-#include "functors.hpp"
+#include "TExprBase.hpp" 
+#include "UnaryTExpr.hpp"
+#include "BinaryTExpr.hpp"
+#include "ProductTExpr.hpp"
 #include "NthTimeDeriv.hpp"
-#include "UnaryTexpr.hpp"
-#include "BinaryTexpr.hpp"
-// #include "traits.hpp"
-// #include "TimeDerivBase.hpp" 
-// #include "NthTimeDeriv.hpp"
-// #include "CoeffMultExpr.hpp"
-// #include "SumExpr.hpp"
-// #include "Executor.hpp"
+#include "Queue.hpp"
 
 #endif // all.hpp (texprs)

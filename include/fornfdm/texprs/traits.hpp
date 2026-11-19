@@ -16,33 +16,27 @@
 namespace fornfdm{
 namespace texprs{
 
-// // Forward Declarations 
-// template<typename Derived>
-// class TimeDerivBase; 
+// Forward Declarations 
+template<typename Derived>
+class TExprBase; 
 
-// template<std::size_t N>
-// class NthTimeDeriv; 
-
-// template<typename Coeff, typename TimeDeriv>
-// class CoeffMultExpr; 
-
-// Given size_t i,j,... get the maximum -------------------------------------------- 
 namespace internal{
-  
+
+// Given a type T detect if it is derived from TExprBase<T> or is the same as TExprBase<T>
+template<class T>
+struct is_texpr_crtp_helper : std::false_type{}; 
+
+template<class T>
+struct is_texpr_crtp_helper<TExprBase<T>> : std::true_type{}; 
+
+template<class T>
+struct is_texpr_crtp_impl : std::disjunction<std::is_base_of<TExprBase<T>,T>, is_texpr_crtp_helper<T>>{}; 
+
+template<class T>
+using is_texpr_crtp = is_texpr_crtp_impl<std::remove_cv_t<std::remove_reference_t<T>>>; 
+
 template<typename T>
-struct traits_impl
-{
-  // static constexpr bool is_texpr = false;
-  // static constexpr bool is_unarop = false; 
-  // static constexpr bool is_binop = false; 
-  // static constexpr bool is_ternop = false; 
-  // // TODO what all is needed here? 
-  // static constexpr bool is_timedep = false;
-  // static constexpr std::size_t max_arity = 0;  
-  // // unique orders contained in the expression
-  // static constexpr std::size_t order = 1; 
-  // static constexpr std::size_t orders_seq = std::index_sequence<1>{}; 
-};
+struct traits_impl{};
 
 template<class T>
 using traits = traits_impl<std::remove_cv_t<std::remove_reference_t<T>>>;
@@ -68,13 +62,13 @@ struct NestedStorage
 };
 
 template<class T>
-struct NestedStorage<T, std::void_t<decltype(fornfdm::texprs::internal::traits<T>::is_texpr)>>
+struct NestedStorage<T, std::enable_if_t<is_texpr_crtp<T>::value>>
 { 
   using traits_t = typename fornfdm::texprs::internal::traits<T>; 
   typedef typename std::conditional<
     (!traits_t::is_unarop && !traits_t::is_binop && !traits_t::is_ternop) && (std::is_lvalue_reference<T>::value),
     T,
-    typename std::remove_reference<T>::type
+    std::remove_reference_t<T>
   >::type type; 
 };
 

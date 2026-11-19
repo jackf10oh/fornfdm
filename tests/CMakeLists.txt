@@ -18,6 +18,16 @@ target_link_libraries(tests_linops
   # PRIVATE pthread # required by GTest # removed for MSVC to compile.
 )
 
+add_executable(tests_texprs
+  tests_texprs.cpp
+)
+
+target_link_libraries(tests_texprs
+  PRIVATE fornfdm
+  PRIVATE GTest::gmock_main 
+  # PRIVATE pthread # required by GTest # removed for MSVC to compile.
+)
+
 add_executable(tests_solvers
   tests_solvers.cpp
 )
@@ -31,4 +41,5 @@ target_link_libraries(tests_solvers
 include(GoogleTest)
 gtest_discover_tests(tests_fornberg)
 gtest_discover_tests(tests_linops)
+gtest_discover_tests(tests_texprs)
 gtest_discover_tests(tests_solvers)

@@ -1,14 +1,15 @@
-// ExecutorBase.hpp
+// Queue.hpp
 //
 // class to manage circular buffer of time + solutions. 
-// Specialized for each kind of TExpr. 
+// And a (order+1)*(# of times) sized array of fornberg weights
+// Strictly manages storage only. Executor is specialized 
+// based off time expression. any calculations will have to 
+// use the public interfaces...
 //
-// specialization will have to implement getRhsExpression and getInvCoeff. 
-//
-// JAF 1/16/2025 
+// JAF 11/13/2025 
 
-#ifndef FORNFDM_TEXPRS_EXECUTORBASE_H
-#define FORNFDM_TEXPRS_EXECUTORBASE_H
+#ifndef FORNFDM_TEXPRS_QUEUE_H
+#define FORNFDM_TEXPRS_QUEUE_H
 
 #include<algorithm>
 #include<array>
@@ -16,31 +17,22 @@
 #include<Eigen/Core>
 #include "../types.hpp" // Scalar, DiagMatrix
 #include "../utilities/fornberg.hpp" // not using stack calc. we need a std::array<Real> not std::array<Scalar> 
-#include "traits.hpp" 
 
 namespace fornfdm{
   namespace texprs{
 
-// specialized according to each expression type.
-// TODO nothing goes to this class on construction? 
-template<typename Derived>
-class ExecutorImpl{};
-
-template<typename TimeDeriv, std::size_t numTimesMin = 0>
-class Executor : public ExecutorImpl<Executor<TimeDeriv, numTimesMin>> 
+template<std::size_t numTimesMin, std::size_t maxOrd>
+class Queue
 {
   public:
     // Type Defs ------------------------------------------- 
-    using WrappedExpression = TimeDeriv; 
     // number of nodes used in Fornberg algorithm 
-    static constexpr std::size_t numStoredTimes = std::max(numTimesMin, internal::traits<TimeDeriv>::max_order+1); 
+    static_assert(numTimesMin >= maxOrd+1, "must supply max order + 1 times for fornberg algorithm");
+    static constexpr std::size_t numStoredTimes = numTimesMin; 
     static constexpr std::size_t numStoredSols = numStoredTimes-1;
-
+    static constexpr std::size_t maxOrder = maxOrd;
   protected:
     // Member Data ---------------------------------
-
-    // reference to the expression the executor is working on. 
-    TimeDeriv& m_wrapped;
 
     // list of t0, t1, ..., tn 
     std::array<fornfdm::Real, numStoredTimes> m_stored_times; 
@@ -49,41 +41,23 @@ class Executor : public ExecutorImpl<Executor<TimeDeriv, numTimesMin>>
     std::array<fornfdm::Vector, numStoredSols> m_stored_sols; 
 
     // forberg weights calculator 
-    std::array<fornfdm::Real, numStoredTimes * (internal::traits<TimeDeriv>::max_order+1)> m_weights_arr; 
+    std::array<fornfdm::Real, numStoredTimes * (maxOrder+1)> m_weights_arr; 
 
   public:
-    // Constructors + Destructor =======================================
-    
-    // default 
-    ExecutorBase()=delete; 
+    // Constructors + Destructor 
+    Queue()=default; 
+    Queue(const Queue& other)=default;
+    ~Queue()=default; 
 
-    // from expressions of Time derivatives
-    ExecutorBase(TimeDeriv& expr_init) 
-      : m_wrapped(expr_init), m_stored_times(), m_stored_sols(), m_weights_arr()
-    {}
-
-    // copy 
-    ExecutorBase(const ExecutorBase& other)=delete;
-    
-    // move
-    ExecutorBase(ExecutorBase&& other)=default; 
-
-    // destructor 
-    ~ExecutorBase()=default; 
-
-    // Member Funcs =======================================
-
-    // Getters to wrapped expression
-    TimeDeriv& getWrappedExpression(){ return m_wrapped; } 
-    const TimeDeriv& getWrappedExpression() const { return m_wrapped; } 
+    // Member Funcs ----- 
 
     // Getters to stored times. 
-    auto& getStoredTimes(){ return m_stored_times; }; 
-    const auto& getStoredTimes() const { return m_stored_times; }; 
+    auto& getTimes(){ return m_stored_times; }; 
+    const auto& getTimes() const { return m_stored_times; }; 
 
     // getters to stored solutions 
-    auto& getStoredSolutions(){ return m_stored_sols; }
-    const auto& getStoredSolutions() const { return m_stored_sols; }
+    auto& getSolutions(){ return m_stored_sols; }
+    const auto& getSolutions() const { return m_stored_sols; }
 
     // returns ref to newest solution 
     fornfdm::Vector& getCurrentSolution(){ return m_stored_sols.back(); }
@@ -94,7 +68,17 @@ class Executor : public ExecutorImpl<Executor<TimeDeriv, numTimesMin>>
     const fornfdm::Vector& getExpiringSolution() const { return m_stored_sols.front(); }
 
     // getter to internal weights array 
+    auto& getWeights(){ return m_weights_arr; }
     const auto& getWeights() const { return m_weights_arr; }
+
+    void calculateWeights(fornfdm::Real t)
+    {
+      utils::fornberg(
+        m_stored_times.data(), m_stored_times.data()+m_stored_times.size(),
+        t, maxOrder,
+        m_weights_arr.data()
+      );
+    }
     
     // consume a time. push back all previous
     void pushTime(fornfdm::Real t)
@@ -111,7 +95,7 @@ class Executor : public ExecutorImpl<Executor<TimeDeriv, numTimesMin>>
       std::size_t d = std::distance(start,end);        
       if(d >= numStoredTimes) 
       {
-        // throw std::runtime_error("Executor setStoredTimes(it,it) error: distance(start,end) > numStoredTimes");
+        // throw std::runtime_error("Queue setStoredTimes(it,it) error: distance(start,end) > numStoredTimes");
         // only copy from rightmost times 
         // std::copy(std::next(m_stored_times.begin(),d-numStoredTimes), m_stored_times.end(), m_stored_times.begin()); 
         auto it = std::next(start, d - numStoredTimes); 
@@ -128,7 +112,7 @@ class Executor : public ExecutorImpl<Executor<TimeDeriv, numTimesMin>>
     }
 
     // rotates stored solutions. meaning the put to back of array. useful to keep memory allocated in hot loops
-    void rotateStoredSolutions(std::size_t idx=1)
+    void rotateSolutions(std::size_t idx=1)
     {
       std::rotate(m_stored_sols.begin(), std::next(m_stored_sols.begin(),idx), m_stored_sols.end()); 
     }
@@ -172,24 +156,10 @@ class Executor : public ExecutorImpl<Executor<TimeDeriv, numTimesMin>>
     }
 };
 
-// entry point for giving specific # of nodes, CTAD time derivate
-template<std::size_t numStoredTimes, typename TimeDeriv>
-auto make_Executor(TimeDeriv& tderiv)
-{
-  return Executor<TimeDeriv,numStoredTimes>(tderiv); 
-}
-
-// entry point  without nodes being specified 
-template<typename TimeDeriv>
-auto make_Executor(TimeDeriv& tderiv)
-{
-  return Executor<TimeDeriv, TimeDeriv::maxOrder+1>(tderiv); 
-}
-
-  } // end namespace texprs 
+} // end namespace texprs 
 } // end namespace fornfdm 
 
-#endif // Executor.hpp
+#endif // Queue.hpp
 
 /** Ramblings on a new texprs refactor. 
  * move away from the old tuple based expressions to a traditional binary/unary expressions

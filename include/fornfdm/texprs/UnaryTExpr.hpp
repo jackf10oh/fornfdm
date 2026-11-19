@@ -1,6 +1,6 @@
 // UnaryTExpr.hpp
 //
-// Class holding a sinlge texpr and a unary functor. 
+// Class holding a sinlge texpr and a unary functor
 //
 // JAF 10/16/2026
 
@@ -10,6 +10,9 @@
 #include<cstddef>
 #include "../types.hpp"
 #include "traits.hpp"
+#include "TExprBase.hpp"
+#include "../diffops/functors.hpp"
+#include "Queue.hpp"
 
 namespace fornfdm{
 namespace texprs{
@@ -23,30 +26,18 @@ namespace internal{
 template<class UnaryOp, class XprType>
 struct traits_impl<UnaryTExpr<UnaryOp,XprType>>
 {
-  static constexpr bool is_texpr = true;
   static constexpr bool is_unarop = true; 
   static constexpr bool is_binop = false; 
   static constexpr bool is_ternop = false; 
   static constexpr bool is_timedep = traits<XprType>::is_timedep; 
   static constexpr std::size_t max_arity = traits<XprType>::max_arity;  
   static constexpr std::size_t max_order = traits<XprType>::max_order;  
-  using orders_seq = typename traits<XprType>::orders_seq;
 };
-
-// ExecutorImpl 
-
-// every executor needs an 
-// - assign to. 
-// - add to. 
-// which are hooked based on the arity 
-// so scalars are created inplace, mem copied into first block,
-// since its entry wise, we're ok with just producing a scalar result for each. 
-// and using fold expression + ... + to get each entry
 
 } // end namespace internal
 
 template<class UnaryOp, class XprType>
-class UnaryTExpr
+class UnaryTExpr : public TExprBase<UnaryTExpr<UnaryOp,XprType>>
 {
   public: 
     // Type Defs 
@@ -59,7 +50,7 @@ class UnaryTExpr
     UnaryOp m_functor; 
   
   public:
-    // Constructors 
+    // Constructors + Destructor
     UnaryTExpr()=delete; 
 
     UnaryTExpr(XprType&& xpr, UnaryOp func = UnaryOp())
@@ -71,47 +62,86 @@ class UnaryTExpr
     ~UnaryTExpr()=default;
 
     // Member Funcs
-    auto makeSummationTerms()
-    {
-      return (m_functor(m_xpr.makeSummationTerms()));
-    }
     const auto& functor() const { return m_functor; }
     const auto& nestedExpression() const { return m_xpr; }
     auto& nestedExpression(){ return m_xpr; }
 };
 
-} // end namespace texprs 
-} // end namespace fornfdm
-
-#include "functors.hpp"
-
-namespace fornfdm{
-namespace texprs{
-
-template<typename XprType, typename = std::enable_if_t<internal::traits<XprType>::is_texpr, void>>
-auto operator-(XprType&& xpr)
+template<typename Derived>
+auto TExprBase<Derived>::operator-() const &
 {
-  return UnaryTExpr<internal::UnaryNegateFO, XprType>(std::forward<XprType>(xpr),internal::UnaryNegateFO{});
+  using fornfdm::linops::internal::UnaryNegateFO;
+  return UnaryTExpr<UnaryNegateFO, const Derived&>(derived(),UnaryNegateFO{});
 }
 
-template<typename C, typename XprType, typename = std::enable_if_t<std::is_convertible<C,fornfdm::Scalar>::value && internal::traits<XprType>::is_texpr>>
+template<typename Derived>
+auto TExprBase<Derived>::operator-() &&
+{
+  using fornfdm::linops::internal::UnaryNegateFO;
+  return UnaryTExpr<UnaryNegateFO, Derived>(std::move(derived()),UnaryNegateFO{});
+}
+
+template<
+  typename C, 
+  typename XprType, 
+  typename = std::enable_if_t<
+    (internal::is_texpr_crtp<XprType>::value && 
+     std::is_convertible_v<C,fornfdm::Scalar>)
+  >
+>
 auto operator*(C&& c, XprType&& xpr)
 {
-  return UnaryTExpr<internal::UnaryScalarMultiplyFO<C>,XprType>(std::forward<XprType>(xpr), internal::UnaryScalarMultiplyFO<C>(std::forward<C>(c)));
+  using fornfdm::linops::internal::UnaryScalarMultiplyFO;
+  return UnaryTExpr<UnaryScalarMultiplyFO<C>,XprType>(std::forward<XprType>(xpr), UnaryScalarMultiplyFO<C>(std::forward<C>(c)));
 }
 
-// template<class UnaryOp, class XprType>
-// class Executor<UnaryTExpr<UnaryOp,XprType>, std::size_t numTimesMin = internal::traits<UnaryTExpr<UnaryOp,XprType>>::max_order+1> 
-//   : public ExecutorBase<UnaryTExpr<UnaryOp,XprType>, numTimesMin>
-// {
-//     // anything else? 
-//   public:
-//     // Constructors + Destructor ? 
-//     Executor()
-//     // Member Functions 
+template<std::size_t Ith, typename Q, typename UnaryOp, typename XprType>
+inline auto coeff(const Q& queue, const UnaryTExpr<UnaryOp,XprType>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+{
+  auto c = coeff<Ith>(queue, xpr.nestedExpression(), m, t);
+  if constexpr(internal::traits<XprType>::max_arity == 0)
+  {
+    // c is a scalar. return f( c ).
+    return xpr.functor()(c);
+  }
+  else
+  {
+    // c is some lambda that accepts Coordinate<N> as argument. 
+    return [c, &f = xpr.functor()](const auto& coord){ return f(c(coord)); }; 
+  }
+}
 
-//     // Member Data 
-// }
+template<typename Q, typename UnaryOp, typename XprType>
+inline auto rhsTerm(const Q& queue, const UnaryTExpr<UnaryOp,XprType>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+{
+  // since UnaryTExpr simply multiplies weights/coeffs linearl by scalar,
+  // safe to pull out the operation onto the large RHS expression.
+  return xpr.functor(rhsTerm(queue, xpr.nestedExpression(), m, t));
+}
+
+template<typename Q, typename UnaryOp, typename XprType>
+inline auto inverseCoeff(const Q& queue, const UnaryTExpr<UnaryOp,XprType>& xpr, const SharedConstMesh& m, fornfdm::Real t)
+{
+  auto c = coeff<queue.numStoredTimes - 1>(queue, xpr, m, t);
+  if constexpr(internal::traits<XprType>::max_arity == 0)
+  {
+    // c is a Real number. 
+    return (fornfdm::Real(1.0) / c);
+  }
+  else
+  {
+    // c is a lambda accepting Coordinate<N> as input 
+    // turn it into an eigen expression
+    auto f = [c, &m](std::size_t idx)
+    {
+      return (fornfdm::Real(1.0) / c(fornfdm::Coordinate<internal::traits<XprType>::max_arity>(m, idx))); 
+    };
+    using F = std::remove_reference_t<std::remove_cv_t<decltype(f)>>;
+    std::size_t n = m->sizesProduct();
+    // dangling reference? possibly need our own wrapper? use diagonal matrix as the template param!!!
+    return Eigen::CwiseNullaryOp<F, fornfdm::Vector>(n, 1, f).asDiagonal();
+  }
+}
 
 } // end namespace texprs
 } // end namespace fornfdm
