@@ -61,7 +61,7 @@ inline auto coeff(const Q& queue, const TExprBase<Derived>& xpr, const fornfdm::
 template<typename Q, typename Derived>
 inline auto rhsTerm(const Q& queue, const TExprBase<Derived>& xpr, const fornfdm::Mesh* m, fornfdm::Real t)
 {
-  rhsTerm(queue, xpr.derived(), m, t);
+  return rhsTerm(queue, xpr.derived(), m, t);
 }
 
 template<typename Q, typename Derived>

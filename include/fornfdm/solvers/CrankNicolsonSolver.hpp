@@ -82,7 +82,7 @@ class CrankNicolsonSolver : public SolverBase<CrankNicolsonSolver<LhsType, RhsTy
 
       // setup queue
       constexpr std::size_t m = fornfdm::texprs::internal::traits<LhsType>::max_order;
-      fornfdm::texprs::Queue<m+1,m> queue;
+      fornfdm::texprs::Queue<m+1,(m+1)*(m+1)> queue;
       queue.pushTimeRange(time_ctx.container->cbegin(), it); 
       auto sol_end = queue.pushSolutionRange(args.initialConditions.begin(), args.initialConditions.end()); 
       for(auto sol_it=args.initialConditions.begin(); sol_it != sol_end; ++sol_it)
@@ -114,7 +114,7 @@ class CrankNicolsonSolver : public SolverBase<CrankNicolsonSolver<LhsType, RhsTy
         // again using left side of [t(n), t(n+1)] time step 
         queue.pushTime(time_ctx.next); 
         fornfdm::Real midpoint = 0.5 * (time_ctx.now + time_ctx.next);
-        queue.calculateWeights(midpoint); 
+        queue.calculateWeights(midpoint, fornfdm::texprs::internal::traits<LhsType>::max_order); 
 
         // outside steps before any type of linear algebra is performed... 
         this->template tupleBeforeLinAlgebra<fornfdm::osteps::StepType::Implicit>(time_ctx,ctx);

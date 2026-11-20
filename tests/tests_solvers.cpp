@@ -55,13 +55,13 @@ struct SolverSuite : public ::testing::Test
     for(std::size_t idx=0; idx<vec.size(); ++idx)
     {
       fornfdm::Real t_final = args.times->data()[args.times->size()-1];
-      fornfdm::Scalar exact_val = std::sin(mesh->getAxis(0)[idx]) * std::exp(-t_final); 
+      fornfdm::Scalar exact_val = std::sin(mesh->getAxis(0)[idx]) * std::exp(-t_final);
       ASSERT_NEAR(vec[idx], exact_val, 0.025);
     }
   }
 };
 
-TEST(SolverSuite, TimeArgsBuilder){
+TEST_F(SolverSuite, TimeArgsBuilder){
   auto test_lam_01 = [](fornfdm::Real t0, fornfdm::Real t1, fornfdm::Real dt)
   {
     auto arg = solvers::TimeArg::builder().setStart(t0).setStop(t1).setStepSize(dt).build();
@@ -91,7 +91,6 @@ TEST(SolverSuite, TimeArgsBuilder){
 
 TEST_F(SolverSuite, OneDimExplicitSolver){
   solvers::ExplicitSolver exp_solver(Ut,Uxx,std::tie(bcs)); 
-  
   auto sol = exp_solver.calculate(args, solvers::LastSaver{});
   checkAnswer(sol); 
 };
@@ -116,7 +115,7 @@ TEST_F(SolverSuite, OneDimFastExpSolver){
 
 TEST_F(SolverSuite, OneDimFastImpSolver){
   solvers::FastImpSolver fast_solver(Ut,Uxx,std::tie(bcs)); 
-  auto sol = fast_solver.calculate(args, solvers::LastSaver{}); 
+  auto sol = fast_solver.calculate(fast_args, solvers::LastSaver{}); 
   checkAnswer(sol);
 };
 

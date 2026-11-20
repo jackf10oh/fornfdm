@@ -44,7 +44,7 @@ int main()
 
   // Solving ...
   // solvers::ExplicitSolver my_solver(Ut,Uxx,std::tie(bcs)); 
-  // solvers::ImplicitSolver my_solver(Utt,expr,std::tie(forcing, bcs)); 
+  // solvers::ImplicitSolver my_solver(Ut,Uxx,std::tie(bcs)); 
   solvers::CrankNicolsonSolver my_solver(Ut,Uxx,std::tie(bcs)); 
 
   // 1D through time 

@@ -159,7 +159,7 @@ auto coeff(const Q& queue, const BinaryTExpr<BinaryOp,LhsType,RhsType>& xpr, con
   {
     // both return a lambda.
     auto lhs_func = coeff<Ith>(queue, xpr.lhs(), m, t); 
-    auto rhs_func = coeff<Ith>(queue, xpr.lhs(), m, t); 
+    auto rhs_func = coeff<Ith>(queue, xpr.rhs(), m, t); 
     return [lhs_func, rhs_func, &f = xpr.functor()](const auto& coord){ return f(lhs_func(coord), rhs_func(coord)); };
   }
 }

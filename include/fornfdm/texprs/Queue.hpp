@@ -21,16 +21,16 @@
 namespace fornfdm{
   namespace texprs{
 
-template<std::size_t numTimesMin, std::size_t maxOrd>
+template<std::size_t nt, std::size_t nw, std::size_t ns = nt-1>
 class Queue
 {
   public:
     // Type Defs ------------------------------------------- 
     // number of nodes used in Fornberg algorithm 
-    static_assert(numTimesMin >= maxOrd+1, "must supply max order + 1 times for fornberg algorithm");
-    static constexpr std::size_t numTimes = numTimesMin; 
-    static constexpr std::size_t numSolutions = numTimes-1;
-    static constexpr std::size_t maxOrder = maxOrd;
+    static constexpr std::size_t numTimes = nt; 
+    static constexpr std::size_t numWeights = nw;
+    static constexpr std::size_t numSolutions = ns;
+
   protected:
     // Member Data ---------------------------------
 
@@ -41,7 +41,7 @@ class Queue
     std::array<fornfdm::Vector, numSolutions> m_stored_sols; 
 
     // forberg weights calculator 
-    std::array<fornfdm::Real, numTimes * (maxOrder+1)> m_weights_arr; 
+    std::array<fornfdm::Real, numWeights> m_weights_arr; 
 
   public:
     // Constructors + Destructor 
@@ -71,7 +71,7 @@ class Queue
     auto& getWeights(){ return m_weights_arr; }
     const auto& getWeights() const { return m_weights_arr; }
 
-    void calculateWeights(fornfdm::Real t)
+    void calculateWeights(fornfdm::Real t, std::size_t maxOrder)
     {
       utils::fornberg(
         m_stored_times.data(), m_stored_times.data()+m_stored_times.size(),

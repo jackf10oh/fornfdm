@@ -69,7 +69,7 @@ class FastExpSolver : public SolverBase<FastExpSolver<LhsType, RhsType, OStepTup
 
       // setup queue 
       constexpr std::size_t m = fornfdm::texprs::internal::traits<LhsType>::max_order;
-      fornfdm::texprs::Queue<m+1, m> queue{};
+      fornfdm::texprs::Queue<m+1, (m+1)*(m+1)> queue{};
 
       auto n = step_n - queue.numTimes + 1;
       for(auto i=1; i<queue.numTimes; ++i){
@@ -101,7 +101,7 @@ class FastExpSolver : public SolverBase<FastExpSolver<LhsType, RhsType, OStepTup
       { 
         time_ctx.next = t_start + step_n * t_stepsize; 
         queue.pushTime(time_ctx.next);
-        queue.calculateWeights(time_ctx.next); // TODO no need to repeat weight calculation?
+        queue.calculateWeights(time_ctx.now, fornfdm::texprs::internal::traits<LhsType>::max_order); // TODO no need to repeat weight calculation?
         this->m_rhs.setTime(time_ctx.now);
 
         // no beforeLinAlgebra!

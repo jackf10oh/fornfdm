@@ -88,12 +88,12 @@ class FastImpSolver : public SolverBase<FastImpSolver<LhsType, RhsType, OStepTup
 
       // setup time context 
       std::size_t step_n = args.initialConditions.size()-1;
-      auto time_ctx = fornfdm::osteps::make_time(t_start + step_n*t_stepsize, 0.0, std::move(args.times));
+      auto time_ctx = fornfdm::osteps::make_time(t_start + step_n*t_stepsize, t_start + (step_n+1) * t_stepsize, std::move(args.times));
       ++step_n; 
 
       // setup executor 
       constexpr std::size_t m = fornfdm::texprs::internal::traits<LhsType>::max_order; 
-      fornfdm::texprs::Queue<m+1,m> queue;
+      fornfdm::texprs::Queue<m+1,(m+1)*(m+1)> queue;
 
       auto n = step_n - queue.numTimes + 1;
       for(auto i=0; i<queue.numTimes; ++i){
@@ -112,7 +112,7 @@ class FastImpSolver : public SolverBase<FastImpSolver<LhsType, RhsType, OStepTup
 
       // Build the stencil. 
       std::size_t s = args.mesh->sizesProduct();
-      queue.calculateWeights(queue.getTimes().back());
+      queue.calculateWeights(queue.getTimes().back(), fornfdm::texprs::internal::traits<LhsType>::max_order);
       auto c = fornfdm::texprs::inverseCoeff(queue, this->m_lhs, args.mesh.get(), 1.0);
       fornfdm::CSRMatrix stencil = fornfdm::utils::Identity(s,s) - c * this->m_rhs.toEigen();
 

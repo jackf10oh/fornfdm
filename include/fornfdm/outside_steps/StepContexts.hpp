@@ -99,7 +99,7 @@ template<
 >
 auto make_context(
   std::shared_ptr<M> m=nullptr, 
-  L* tx=nullptr, 
+  const L* tx=nullptr, 
   R* r=nullptr, 
   Q* q=nullptr, 
   S* s=nullptr

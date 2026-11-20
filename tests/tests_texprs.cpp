@@ -34,45 +34,45 @@ struct TExprsSuite : public ::testing::Test
     queue_03.getTimes() = {0.0, 10.0, 20.0};
   }
 
-  texprs::Queue<4,2> queue_01;  
-  texprs::Queue<4,3> queue_02; 
-  texprs::Queue<3,2> queue_03; 
+  texprs::Queue<4,3*4> queue_01;  
+  texprs::Queue<4,4*4> queue_02; 
+  texprs::Queue<3,3*3> queue_03; 
 };
 
 // TExprs Suite ------------------------------------------------- 
 TEST_F(TExprsSuite, QueueSizes){
   ASSERT_EQ(queue_01.numTimes, 4);
   ASSERT_EQ(queue_01.numSolutions, 3);
-  ASSERT_EQ(queue_01.maxOrder, 2);
+  ASSERT_EQ(queue_01.numWeights, 12);
 
   ASSERT_EQ(queue_02.numTimes, 4);
   ASSERT_EQ(queue_02.numSolutions, 3);
-  ASSERT_EQ(queue_02.maxOrder, 3);
+  ASSERT_EQ(queue_02.numWeights, 16);
 
   ASSERT_EQ(queue_03.numTimes, 3);
   ASSERT_EQ(queue_03.numSolutions, 2);
-  ASSERT_EQ(queue_03.maxOrder, 2);
+  ASSERT_EQ(queue_03.numWeights, 9);
 }
 
 TEST_F(TExprsSuite, BasicNthTimeDeriv)
 {
   auto test_lam = [this](auto xpr)
   {
-    if(xpr.order <= queue_01.maxOrder)
+    if(xpr.order <= (queue_01.numWeights / queue_01.numTimes))
     {
       ASSERT_EQ(coeff<0>(queue_01, xpr, nullptr, 0.0), queue_01.getWeights()[xpr.order*queue_01.numTimes + 0]);
       ASSERT_EQ(coeff<1>(queue_01, xpr, nullptr, 0.0), queue_01.getWeights()[xpr.order*queue_01.numTimes + 1]);
       ASSERT_EQ(coeff<2>(queue_01, xpr, nullptr, 0.0), queue_01.getWeights()[xpr.order*queue_01.numTimes + 2]);
       ASSERT_EQ(coeff<3>(queue_01, xpr, nullptr, 0.0), queue_01.getWeights()[xpr.order*queue_01.numTimes + 3]);
     }
-    if(xpr.order <= queue_02.maxOrder)
+    if(xpr.order <= (queue_02.numWeights / queue_02.numTimes))
     {
       ASSERT_EQ(coeff<0>(queue_02, xpr, nullptr, 0.0), queue_02.getWeights()[xpr.order*queue_02.numTimes + 0]);
       ASSERT_EQ(coeff<1>(queue_02, xpr, nullptr, 0.0), queue_02.getWeights()[xpr.order*queue_02.numTimes + 1]);
       ASSERT_EQ(coeff<2>(queue_02, xpr, nullptr, 0.0), queue_02.getWeights()[xpr.order*queue_02.numTimes + 2]);
       ASSERT_EQ(coeff<3>(queue_02, xpr, nullptr, 0.0), queue_02.getWeights()[xpr.order*queue_02.numTimes + 3]);
     }
-    if(xpr.order <= queue_03.maxOrder)
+    if(xpr.order <= (queue_03.numWeights / queue_03.numTimes))
     {
       ASSERT_EQ(coeff<0>(queue_03, xpr, nullptr, 0.0), queue_03.getWeights()[xpr.order*queue_03.numTimes + 0]);
       ASSERT_EQ(coeff<1>(queue_03, xpr, nullptr, 0.0), queue_03.getWeights()[xpr.order*queue_03.numTimes + 1]);
